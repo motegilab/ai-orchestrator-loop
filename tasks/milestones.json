@@ -1,0 +1,148 @@
+{
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Stabilize Local Orchestrator Loop",
+      "goal": "Keep webhook -> normalize -> next_prompt/report path deterministic.",
+      "status": "planned",
+      "waves": [
+        {
+          "wave": "wave-1",
+          "tasks": [
+            {
+              "id": "M1-W1-T1",
+              "summary": "Verify health/restart flow on clean repo",
+              "status": "todo",
+              "acceptance_criteria": [
+                "make orch-restart completes",
+                "make orch-health returns status ok"
+              ],
+              "verify_commands": [
+                "make orch-restart",
+                "make orch-health"
+              ],
+              "evidence_paths": []
+            },
+            {
+              "id": "M1-W1-T2",
+              "summary": "Generate baseline run/report artifacts",
+              "status": "todo",
+              "acceptance_criteria": [
+                "runs/latest.json exists",
+                "reports/REPORT_LATEST.md exists"
+              ],
+              "verify_commands": [
+                "make orch-post",
+                "make orch-report"
+              ],
+              "evidence_paths": []
+            }
+          ]
+        },
+        {
+          "wave": "wave-2",
+          "tasks": [
+            {
+              "id": "M1-W2-T1",
+              "summary": "Harden scope guard behavior for public repo",
+              "status": "todo",
+              "acceptance_criteria": [
+                "No blocked status caused by bootstrap files",
+                "Allowed paths stay unchanged"
+              ],
+              "verify_commands": [
+                "make orch-post",
+                "make orch-report"
+              ],
+              "evidence_paths": []
+            },
+            {
+              "id": "M1-W2-T2",
+              "summary": "Document local operator workflow",
+              "status": "todo",
+              "acceptance_criteria": [
+                "README quickstart is runnable",
+                "No CLI auto-run beyond allowed entrypoint"
+              ],
+              "verify_commands": [
+                "rg -n \"orch-run-next-local\" README.md"
+              ],
+              "evidence_paths": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M2",
+      "title": "Role-Separated Task Delivery",
+      "goal": "Use planner/builder/verifier prompts with file-based memory.",
+      "status": "planned",
+      "waves": [
+        {
+          "wave": "wave-1",
+          "tasks": [
+            {
+              "id": "M2-W1-T1",
+              "summary": "Define planner role and output contract",
+              "status": "todo",
+              "acceptance_criteria": [
+                "Planner prompt defines one-cause/one-fix selection",
+                "Planner output references milestones.json"
+              ],
+              "verify_commands": [
+                "type prompts/planner.md"
+              ],
+              "evidence_paths": []
+            },
+            {
+              "id": "M2-W1-T2",
+              "summary": "Define builder role boundaries",
+              "status": "todo",
+              "acceptance_criteria": [
+                "Builder prompt prohibits unrelated edits",
+                "Builder requires verification commands"
+              ],
+              "verify_commands": [
+                "type prompts/builder.md"
+              ],
+              "evidence_paths": []
+            }
+          ]
+        },
+        {
+          "wave": "wave-2",
+          "tasks": [
+            {
+              "id": "M2-W2-T1",
+              "summary": "Define verifier role evidence policy",
+              "status": "todo",
+              "acceptance_criteria": [
+                "Verifier requires command outputs and artifact paths",
+                "Verifier blocks mock-only completion"
+              ],
+              "verify_commands": [
+                "type prompts/verifier.md"
+              ],
+              "evidence_paths": []
+            },
+            {
+              "id": "M2-W2-T2",
+              "summary": "Align docs with SSOT/report loop",
+              "status": "todo",
+              "acceptance_criteria": [
+                "docs/architecture.md and docs/quality.md exist",
+                "Both docs reference report integrity expectations"
+              ],
+              "verify_commands": [
+                "type docs/architecture.md",
+                "type docs/quality.md"
+              ],
+              "evidence_paths": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

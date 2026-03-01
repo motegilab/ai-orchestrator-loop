@@ -1,0 +1,7 @@
+tools/orchestrator_runtime/logs/next_prompt.md を読め。
+
+その中の NEXT セクションの内容を実行せよ。
+DONE は参照のみ。FAIL/FIX があればそれを優先して修正せよ。
+VERIFY は実行後に確認すること。
+
+承認は求めない。質問はしない。不明点は決めて進める。

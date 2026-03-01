@@ -1,0 +1,18 @@
+﻿# runtime artifacts (generated, local-only)
+tools/orchestrator_runtime/**
+!tools/orchestrator_runtime/**/.gitkeep
+
+# local/editor/env
+.venv/
+.cursor/
+.obsidian/
+__pycache__/
+*.pyc
+
+# secrets / local configs
+.env
+*.secret
+*.key
+*.pem
+health_ok
+health_failed

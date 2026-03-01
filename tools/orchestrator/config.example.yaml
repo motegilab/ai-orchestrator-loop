@@ -1,0 +1,16 @@
+# Copy to tools/orchestrator/config.yaml and edit for your workspace.
+host: 127.0.0.1
+port: 8765
+
+# If omitted, server.py resolves workspace_root to repository root.
+# Relative paths are resolved from tools/orchestrator/.
+workspace_root: ../..
+
+# If omitted, runtime_root defaults to <workspace_root>/tools/orchestrator_runtime
+# runtime_root: ../../tools/orchestrator_runtime
+
+source: cursor
+
+# SSOT-First: planner が next_prompt.md 冒頭に SSOT 抜粋を埋め込む。空なら status=blocked。
+# ワークスペースルートからの相対パス。
+ssot_path: rules/SSOT_AI_Orchestrator_Loop.md
