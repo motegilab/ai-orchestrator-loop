@@ -59,9 +59,10 @@ DEFAULT_SSOT_CHECK_POLICY = {
 }
 DEFAULT_COMMAND_GUARD_ALLOWED_COMMANDS = [
     "make",
-    "rg",
     "type",
     "python",
+    "powershell",
+    "pwsh",
 ]
 DEFAULT_COMMAND_GUARD_POLICY = {
     "enabled": True,
@@ -1014,7 +1015,8 @@ def task_orch_setup(_: argparse.Namespace) -> int:
 def task_orch_doctor(_: argparse.Namespace) -> int:
     print("🔬 環境チェック...")
     print(sys.version)
-    print(f"rg: {'OK' if shutil.which('rg') else 'not found'}")
+    print(f"powershell: {'OK' if shutil.which('powershell') else 'not found'}")
+    print(f"pwsh: {'OK' if shutil.which('pwsh') else 'not found'}")
     pw = _powershell_executable()
     print("PowerShell: OK" if pw else "PowerShell: not available (orch-setup には PowerShell が必要)")
     print("Run: make orch-start-bg && make orch-health && make orch-post")

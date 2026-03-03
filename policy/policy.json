@@ -34,6 +34,19 @@
     "tools/orchestrator_runtime/runs/latest.json",
     "tools/orchestrator_runtime/reports/REPORT_LATEST.md"
   ],
+  "command_guard": {
+    "enabled": true,
+    "allowed_commands": [
+      "make",
+      "type",
+      "python",
+      "powershell",
+      "pwsh"
+    ],
+    "read_targets_must_match_scope": true,
+    "on_violation": "abort",
+    "violation_message": "COMMAND_GUARD: target path violates policy.scope (denylist or outside allowed prefixes)."
+  },
   "self_repair_loop": {
     "enabled": true,
     "max_iters": 3,

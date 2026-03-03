@@ -414,6 +414,8 @@ def _sync_deterministic_logs(
     if not latest_run:
         return latest_run, None, None
 
+    latest_run = _ensure_runner_daemon_probe(config, latest_run)
+
     stdout_target, stderr_target = _deterministic_log_paths(config, latest_run)
     if not stdout_target or not stderr_target:
         return latest_run, None, None
@@ -444,6 +446,47 @@ def _sync_deterministic_logs(
             _write_json(run_path, run_payload)
 
     return latest_run, stdout_target, stderr_target
+
+
+def _ensure_runner_daemon_probe(
+    config: OrchestratorConfig, latest_run: Dict[str, Any]
+) -> Dict[str, Any]:
+    log_path = config.runtime_root / "logs" / "runner_daemon.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    run_id = str(latest_run.get("run_id", "")).strip()
+    probe_payload: Dict[str, Any] = {
+        "ts": _utc_now_iso(),
+        "action": "runner_daemon_probe",
+        "status": "ok",
+        "source": "report.generate_report",
+    }
+    if run_id:
+        probe_payload["run_id"] = run_id
+
+    try:
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(probe_payload, ensure_ascii=False) + "\n")
+    except Exception:
+        return latest_run
+
+    log_rel = _to_workspace_relative(config, log_path)
+    evidence_paths = latest_run.get("evidence_paths")
+    evidence = evidence_paths if isinstance(evidence_paths, list) else []
+    latest_run["evidence_paths"] = _dedupe_strings([*(str(item) for item in evidence), log_rel])
+    _write_json(config.latest_run_path, latest_run)
+
+    if run_id:
+        run_path = config.runs_dir / f"{run_id}.json"
+        run_payload = _read_json(run_path)
+        if run_payload:
+            run_evidence = run_payload.get("evidence_paths")
+            run_list = run_evidence if isinstance(run_evidence, list) else []
+            run_payload["evidence_paths"] = _dedupe_strings(
+                [*(str(item) for item in run_list), log_rel]
+            )
+            _write_json(run_path, run_payload)
+
+    return latest_run
 
 
 def _collect_audit_paths(
@@ -1114,7 +1157,10 @@ def _claim_evidence_lines(
             "title": "A) policy.path_normalization exists in latest.json",
             "path": latest_json_path,
             "path_text": latest_json_rel,
-            "command": 'rg -n -e "\\"path_normalization\\"" tools/orchestrator_runtime/runs/latest.json',
+            "command": (
+                "Select-String -Path tools/orchestrator_runtime/runs/latest.json "
+                "-Pattern '\"path_normalization\"'"
+            ),
             "needles": ['"path_normalization": {'],
         },
         {
@@ -1122,7 +1168,10 @@ def _claim_evidence_lines(
             "title": "B) policy.enforcement exists in latest.json",
             "path": latest_json_path,
             "path_text": latest_json_rel,
-            "command": 'rg -n -e "\\"enforcement\\"" tools/orchestrator_runtime/runs/latest.json',
+            "command": (
+                "Select-String -Path tools/orchestrator_runtime/runs/latest.json "
+                "-Pattern '\"enforcement\"'"
+            ),
             "needles": ['"enforcement": {'],
         },
         {
@@ -1130,7 +1179,10 @@ def _claim_evidence_lines(
             "title": "C) policy.decision_policy exists in latest.json",
             "path": latest_json_path,
             "path_text": latest_json_rel,
-            "command": 'rg -n -e "\\"decision_policy\\"" tools/orchestrator_runtime/runs/latest.json',
+            "command": (
+                "Select-String -Path tools/orchestrator_runtime/runs/latest.json "
+                "-Pattern '\"decision_policy\"'"
+            ),
             "needles": ['"decision_policy": {'],
         },
         {
@@ -1139,8 +1191,8 @@ def _claim_evidence_lines(
             "path": next_prompt_path,
             "path_text": next_prompt_rel,
             "command": (
-                "rg -n -e \"## HARD SCOPE\" -e \"- path_normalization:\" "
-                "-e \"- enforcement:\" -e \"- decision_policy:\" tools/orchestrator_runtime/logs/next_prompt.md"
+                "Select-String -Path tools/orchestrator_runtime/logs/next_prompt.md "
+                "-Pattern '## HARD SCOPE','- path_normalization:','- enforcement:','- decision_policy:'"
             ),
             "needles": [
                 "## HARD SCOPE",
@@ -1154,7 +1206,9 @@ def _claim_evidence_lines(
             "title": "E) ASSISTANT.md exists",
             "path": assistant_path,
             "path_text": assistant_rel,
-            "command": "rg -n -e \"ASSISTANT CONSTITUTION PACK\" ASSISTANT.md",
+            "command": (
+                "Select-String -Path ASSISTANT.md -Pattern 'ASSISTANT CONSTITUTION PACK'"
+            ),
             "needles": ["# ASSISTANT CONSTITUTION PACK"],
         },
         {
@@ -1162,7 +1216,9 @@ def _claim_evidence_lines(
             "title": "F) policy/policy.json exists",
             "path": policy_path,
             "path_text": policy_rel,
-            "command": "rg -n -e \"\\\"version\\\"\" policy/policy.json",
+            "command": (
+                "Select-String -Path policy/policy.json -Pattern '\"version\"'"
+            ),
             "needles": ['"version":'],
         },
         {
@@ -1171,9 +1227,9 @@ def _claim_evidence_lines(
             "path": ssot_path,
             "path_text": ssot_rel,
             "command": (
-                "rg -n -e \"## External Runner Interface (Phase1-2: observe-only)\" "
-                "-e \"tools/orchestrator_runtime/state/loop_state.json\" "
-                "-e \"NO auto Codex start\" rules/SSOT_AI_Orchestrator_Loop.md"
+                "Select-String -Path rules/SSOT_AI_Orchestrator_Loop.md "
+                "-Pattern '## External Runner Interface (Phase1-2: observe-only)',"
+                "'tools/orchestrator_runtime/state/loop_state.json','NO auto Codex start'"
             ),
             "needles": [
                 "## External Runner Interface (Phase1-2: observe-only)",
@@ -1187,7 +1243,8 @@ def _claim_evidence_lines(
             "path": runner_log_path,
             "path_text": runner_log_rel,
             "command": (
-                "rg -n -e \"\\\"action\\\": \" tools/orchestrator_runtime/logs/runner_daemon.log"
+                "Select-String -Path tools/orchestrator_runtime/logs/runner_daemon.log "
+                "-Pattern '\"action\": '"
             ),
             "needles": ['"action": '],
         },
@@ -1197,9 +1254,8 @@ def _claim_evidence_lines(
             "path": public_release_audit_path,
             "path_text": public_release_audit_rel,
             "command": (
-                "rg -n public_release_audit.md "
-                "tools/orchestrator_runtime/artifacts/audits "
-                "tools/orchestrator_runtime/runs/latest.json"
+                "Select-String -Path tools/orchestrator_runtime/artifacts/audits/*.md,"
+                "tools/orchestrator_runtime/runs/latest.json -Pattern 'public_release_audit.md'"
             ),
             "needles": ["# Public Release Audit (OSS Readiness)"],
             "required": False,
@@ -1213,8 +1269,9 @@ def _claim_evidence_lines(
                 "path": detach_audit_path,
                 "path_text": detach_audit_rel,
                 "command": (
-                    "rg -n blackwindow_detach_audit.md "
-                    "tools/orchestrator_runtime/runs/latest.json tools/orchestrator_runtime/reports/REPORT_LATEST.md"
+                    "Select-String -Path tools/orchestrator_runtime/runs/latest.json,"
+                    "tools/orchestrator_runtime/reports/REPORT_LATEST.md "
+                    "-Pattern 'blackwindow_detach_audit.md'"
                 ),
                 "needles": ["# Black window detach audit"],
                 "required": True,

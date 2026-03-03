@@ -107,9 +107,10 @@ DEFAULT_SSOT_CHECK_POLICY = {
 }
 DEFAULT_COMMAND_GUARD_ALLOWED_COMMANDS = (
     "make",
-    "rg",
     "type",
     "python",
+    "powershell",
+    "pwsh",
 )
 DEFAULT_COMMAND_GUARD_POLICY = {
     "enabled": True,

@@ -65,7 +65,7 @@
                 "No CLI auto-run beyond allowed entrypoint"
               ],
               "verify_commands": [
-                "rg -n \"orch-run-next-local\" README.md"
+                "powershell -NoProfile -Command \"Select-String -Path README.md -Pattern 'orch-run-next-local'\""
               ],
               "evidence_paths": []
             }

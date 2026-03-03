@@ -50,9 +50,10 @@ DEFAULT_SCOPE_MUST_READ_FIRST = [
 ]
 DEFAULT_COMMAND_GUARD_ALLOWED_COMMANDS = [
     "make",
-    "rg",
     "type",
     "python",
+    "powershell",
+    "pwsh",
 ]
 DEFAULT_DECISION_POLICY = {
     "enabled": True,
