@@ -1158,8 +1158,9 @@ def _claim_evidence_lines(
             "path": latest_json_path,
             "path_text": latest_json_rel,
             "command": (
-                "Select-String -Path tools/orchestrator_runtime/runs/latest.json "
-                "-Pattern '\"path_normalization\"'"
+                "python tools/orchestrator/scripts/evidence_search.py "
+                "--path tools/orchestrator_runtime/runs/latest.json "
+                "--pattern \"path_normalization\""
             ),
             "needles": ['"path_normalization": {'],
         },
@@ -1169,8 +1170,9 @@ def _claim_evidence_lines(
             "path": latest_json_path,
             "path_text": latest_json_rel,
             "command": (
-                "Select-String -Path tools/orchestrator_runtime/runs/latest.json "
-                "-Pattern '\"enforcement\"'"
+                "python tools/orchestrator/scripts/evidence_search.py "
+                "--path tools/orchestrator_runtime/runs/latest.json "
+                "--pattern \"enforcement\""
             ),
             "needles": ['"enforcement": {'],
         },
@@ -1180,8 +1182,9 @@ def _claim_evidence_lines(
             "path": latest_json_path,
             "path_text": latest_json_rel,
             "command": (
-                "Select-String -Path tools/orchestrator_runtime/runs/latest.json "
-                "-Pattern '\"decision_policy\"'"
+                "python tools/orchestrator/scripts/evidence_search.py "
+                "--path tools/orchestrator_runtime/runs/latest.json "
+                "--pattern \"decision_policy\""
             ),
             "needles": ['"decision_policy": {'],
         },
@@ -1191,8 +1194,12 @@ def _claim_evidence_lines(
             "path": next_prompt_path,
             "path_text": next_prompt_rel,
             "command": (
-                "Select-String -Path tools/orchestrator_runtime/logs/next_prompt.md "
-                "-Pattern '## HARD SCOPE','- path_normalization:','- enforcement:','- decision_policy:'"
+                "python tools/orchestrator/scripts/evidence_search.py "
+                "--path tools/orchestrator_runtime/logs/next_prompt.md "
+                "--pattern \"## HARD SCOPE\" "
+                "--pattern \"- path_normalization:\" "
+                "--pattern \"- enforcement:\" "
+                "--pattern \"- decision_policy:\""
             ),
             "needles": [
                 "## HARD SCOPE",
@@ -1207,7 +1214,9 @@ def _claim_evidence_lines(
             "path": assistant_path,
             "path_text": assistant_rel,
             "command": (
-                "Select-String -Path ASSISTANT.md -Pattern 'ASSISTANT CONSTITUTION PACK'"
+                "python tools/orchestrator/scripts/evidence_search.py "
+                "--path ASSISTANT.md "
+                "--pattern \"ASSISTANT CONSTITUTION PACK\""
             ),
             "needles": ["# ASSISTANT CONSTITUTION PACK"],
         },
@@ -1217,7 +1226,9 @@ def _claim_evidence_lines(
             "path": policy_path,
             "path_text": policy_rel,
             "command": (
-                "Select-String -Path policy/policy.json -Pattern '\"version\"'"
+                "python tools/orchestrator/scripts/evidence_search.py "
+                "--path policy/policy.json "
+                "--pattern \"\\\"version\\\"\""
             ),
             "needles": ['"version":'],
         },
@@ -1227,9 +1238,11 @@ def _claim_evidence_lines(
             "path": ssot_path,
             "path_text": ssot_rel,
             "command": (
-                "Select-String -Path rules/SSOT_AI_Orchestrator_Loop.md "
-                "-Pattern '## External Runner Interface (Phase1-2: observe-only)',"
-                "'tools/orchestrator_runtime/state/loop_state.json','NO auto Codex start'"
+                "python tools/orchestrator/scripts/evidence_search.py "
+                "--path rules/SSOT_AI_Orchestrator_Loop.md "
+                "--pattern \"## External Runner Interface (Phase1-2: observe-only)\" "
+                "--pattern \"tools/orchestrator_runtime/state/loop_state.json\" "
+                "--pattern \"NO auto Codex start\""
             ),
             "needles": [
                 "## External Runner Interface (Phase1-2: observe-only)",
@@ -1243,8 +1256,9 @@ def _claim_evidence_lines(
             "path": runner_log_path,
             "path_text": runner_log_rel,
             "command": (
-                "Select-String -Path tools/orchestrator_runtime/logs/runner_daemon.log "
-                "-Pattern '\"action\": '"
+                "python tools/orchestrator/scripts/evidence_search.py "
+                "--path tools/orchestrator_runtime/logs/runner_daemon.log "
+                "--pattern \"\\\"action\\\": \""
             ),
             "needles": ['"action": '],
         },
@@ -1254,8 +1268,10 @@ def _claim_evidence_lines(
             "path": public_release_audit_path,
             "path_text": public_release_audit_rel,
             "command": (
-                "Select-String -Path tools/orchestrator_runtime/artifacts/audits/*.md,"
-                "tools/orchestrator_runtime/runs/latest.json -Pattern 'public_release_audit.md'"
+                "python tools/orchestrator/scripts/evidence_search.py "
+                "--path tools/orchestrator_runtime/artifacts/audits/*.md "
+                "--path tools/orchestrator_runtime/runs/latest.json "
+                "--pattern \"public_release_audit.md\""
             ),
             "needles": ["# Public Release Audit (OSS Readiness)"],
             "required": False,
@@ -1269,9 +1285,10 @@ def _claim_evidence_lines(
                 "path": detach_audit_path,
                 "path_text": detach_audit_rel,
                 "command": (
-                    "Select-String -Path tools/orchestrator_runtime/runs/latest.json,"
-                    "tools/orchestrator_runtime/reports/REPORT_LATEST.md "
-                    "-Pattern 'blackwindow_detach_audit.md'"
+                    "python tools/orchestrator/scripts/evidence_search.py "
+                    "--path tools/orchestrator_runtime/runs/latest.json "
+                    "--path tools/orchestrator_runtime/reports/REPORT_LATEST.md "
+                    "--pattern \"blackwindow_detach_audit.md\""
                 ),
                 "needles": ["# Black window detach audit"],
                 "required": True,
