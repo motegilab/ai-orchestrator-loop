@@ -887,17 +887,191 @@ def task_orch_health(args: argparse.Namespace) -> int:
     return 2
 
 
+def _run_git_capture(args: list[str]) -> tuple[int, str, str]:
+    completed = subprocess.run(
+        ["git", "-C", str(workspace_root()), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    return int(completed.returncode), str(completed.stdout), str(completed.stderr)
+
+
+def _tracked_diff_files() -> tuple[list[str], str]:
+    rc, stdout, stderr = _run_git_capture(["diff", "--name-only"])
+    if rc != 0:
+        detail = " ".join((stderr or stdout).split()).strip() or f"exit={rc}"
+        return [], f"git diff --name-only failed: {detail}"
+    paths = [line.strip() for line in stdout.splitlines() if line.strip()]
+    return paths, ""
+
+
+def _latest_stash_ref() -> str:
+    rc, stdout, _stderr = _run_git_capture(["stash", "list", "-n", "1", "--pretty=format:%gd"])
+    if rc != 0:
+        return ""
+    return stdout.strip()
+
+
+def _write_orch_post_preflight_artifact(
+    *,
+    origin_run_id: str,
+    pre_stash_files: list[str],
+    post_stash_files: list[str],
+    stash_command: str,
+    stash_rc: int,
+    stash_ref: str,
+    stash_output_excerpt: str,
+) -> str:
+    root = workspace_root()
+    diffs_dir = root / "tools/orchestrator_runtime/artifacts/diffs"
+    diffs_dir.mkdir(parents=True, exist_ok=True)
+    stamp = _timestamp_for_filename()
+    run_token = origin_run_id or "no_run"
+    artifact_path = diffs_dir / f"{stamp}_{run_token}_orch_post_preflight_stash.txt"
+
+    lines: list[str] = []
+    lines.append("preflight_action=stash_tracked_changes")
+    lines.append(f"timestamp={_utc_iso()}")
+    lines.append(f"origin_run_id={run_token}")
+    lines.append(f"stash_command={stash_command}")
+    lines.append(f"stash_exit_code={stash_rc}")
+    lines.append(f"stash_ref={stash_ref or 'N/A'}")
+    lines.append("pre_stash_diff_files:")
+    if pre_stash_files:
+        lines.extend([f"- {item}" for item in pre_stash_files])
+    else:
+        lines.append("- (none)")
+    lines.append("post_stash_diff_files:")
+    if post_stash_files:
+        lines.extend([f"- {item}" for item in post_stash_files])
+    else:
+        lines.append("- (none)")
+    lines.append("stash_output_excerpt:")
+    lines.append("```text")
+    lines.append(stash_output_excerpt or "(no output)")
+    lines.append("```")
+    artifact_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return _to_rel_path(artifact_path)
+
+
+def _append_post_preflight_for_run(
+    run_id: str,
+    *,
+    action: str,
+    stashed_files: list[str],
+    stash_ref: str,
+    stash_output_excerpt: str,
+    evidence_path: str,
+) -> None:
+    if not run_id:
+        return
+    root = workspace_root()
+    runs_dir = root / "tools/orchestrator_runtime/runs"
+    targets = [runs_dir / "latest.json", runs_dir / f"{run_id}.json"]
+    for target in targets:
+        payload = _read_json(target)
+        if not payload:
+            continue
+        payload["post_preflight"] = {
+            "action": action,
+            "stashed_files": list(stashed_files),
+            "stash_ref": stash_ref or "N/A",
+            "stash_output_excerpt": stash_output_excerpt or "(no output)",
+            "evidence_path": evidence_path,
+        }
+        if evidence_path:
+            _append_evidence_paths(payload, [evidence_path])
+        _write_json(target, payload)
+
+
 def task_orch_post(args: argparse.Namespace) -> int:
     print("📤 AI Orchestrator にテスト POST 送信中...")
+    preflight_action = "none"
+    stash_output_excerpt = ""
+    preflight_evidence_path = ""
+    stashed_files: list[str] = []
+    stash_ref = ""
+    origin_run_id = _latest_run_id()
+
+    tracked_before, tracked_error = _tracked_diff_files()
+    if tracked_error:
+        print(f"❌ preflight failed: {tracked_error}")
+        return 1
+
+    if tracked_before:
+        preflight_action = "stash_tracked_changes"
+        stashed_files = list(tracked_before)
+        stash_message = "orch-post-preflight: stash tracked changes"
+        stash_command = f'git stash push -k -m "{stash_message}"'
+        stash_rc, stash_stdout, stash_stderr = _run_git_capture(
+            ["stash", "push", "-k", "-m", stash_message]
+        )
+        stash_output_excerpt = _tail_text(
+            "\n".join([stash_stdout.strip(), stash_stderr.strip()]).strip(),
+            max_lines=80,
+        )
+        stash_ref = _latest_stash_ref() if stash_rc == 0 else ""
+        tracked_after, tracked_after_error = _tracked_diff_files()
+        if tracked_after_error:
+            tracked_after = [tracked_after_error]
+        preflight_evidence_path = _write_orch_post_preflight_artifact(
+            origin_run_id=origin_run_id,
+            pre_stash_files=tracked_before,
+            post_stash_files=tracked_after,
+            stash_command=stash_command,
+            stash_rc=stash_rc,
+            stash_ref=stash_ref,
+            stash_output_excerpt=stash_output_excerpt or "(no output)",
+        )
+        if stash_rc != 0:
+            print(f"❌ preflight stash failed (exit={stash_rc})")
+            print(stash_output_excerpt or "(no output)")
+            return 1
+        if tracked_after:
+            print("❌ preflight stash incomplete: tracked diff still remains.")
+            print("\n".join(tracked_after))
+            return 1
+
     payload = {"event_id": "make-post", "status": "ok", "summary": "make orch-post"}
+    if preflight_action != "none":
+        payload["preflight_action"] = preflight_action
+        payload["stashed_files"] = stashed_files
+        payload["stash_ref"] = stash_ref or "N/A"
+        payload["preflight_evidence_path"] = preflight_evidence_path
+
     req = request.Request(
         f"http://127.0.0.1:{args.port}/webhook",
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
+    response_text = ""
     with request.urlopen(req, timeout=10) as response:
-        print(response.read().decode("utf-8", errors="replace"))
+        response_text = response.read().decode("utf-8", errors="replace")
+        print(response_text)
+
+    if preflight_evidence_path:
+        run_id = ""
+        try:
+            response_payload = json.loads(response_text)
+        except json.JSONDecodeError:
+            response_payload = {}
+        if isinstance(response_payload, dict):
+            run_id = str(response_payload.get("run_id", "")).strip()
+        if not run_id:
+            run_id = _latest_run_id()
+        if run_id:
+            _append_evidence_for_run(run_id, [preflight_evidence_path])
+            _append_post_preflight_for_run(
+                run_id,
+                action=preflight_action,
+                stashed_files=stashed_files,
+                stash_ref=stash_ref,
+                stash_output_excerpt=stash_output_excerpt,
+                evidence_path=preflight_evidence_path,
+            )
     return 0
 
 

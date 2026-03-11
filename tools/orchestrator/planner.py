@@ -269,6 +269,7 @@ def _derive_one_fix(ask: str, focus: str, current_run: Dict[str, Any]) -> str:
 def _apply_decision_policy(
     *,
     base_decision: str,
+    ask: str,
     current_run: Dict[str, Any],
     latest_run: Dict[str, Any],
     decision_policy: Dict[str, Any],
@@ -286,6 +287,7 @@ def _apply_decision_policy(
         else []
     )
     joined_errors = " | ".join(top_errors).lower()
+    ask_text = str(ask).strip().lower()
 
     if run_status == "blocked":
         rules_raw = decision_policy.get("if_run_status_blocked")
@@ -300,6 +302,17 @@ def _apply_decision_policy(
                         decision,
                         f"matched blocked rule: when_top_error_contains='{needle}'",
                     )
+        if "scope_guard" in joined_errors and "docs/" in joined_errors:
+            return (
+                "scope_guard_false_positive_reduction",
+                "matched blocked rule: scope_guard docs path => scope-only fix.",
+            )
+
+    if run_status == "success" and "no action needed" in ask_text:
+        return (
+            "no_op",
+            "matched rule: ask_no_action_overrides_priority (run_status='success').",
+        )
 
     default_decision = str(decision_policy.get("default_decision", "")).strip()
     priorities_raw = decision_policy.get("priorities")
@@ -482,6 +495,7 @@ def _self_repair_prompt_body(
     )
     one_fix, one_fix_why = _apply_decision_policy(
         base_decision=_derive_one_fix(ask, focus, current_run),
+        ask=ask,
         current_run=current_run,
         latest_run=latest_run,
         decision_policy=decision_policy,
