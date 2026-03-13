@@ -1,73 +1,36 @@
 {
+  "project": "AI Orchestrator Loop - CODEX版",
+  "version": "2.0.0",
   "milestones": [
     {
       "id": "M1",
-      "title": "Stabilize Local Orchestrator Loop",
-      "goal": "Keep webhook -> normalize -> next_prompt/report path deterministic.",
-      "status": "planned",
+      "title": "Phase 1: AGENTS.md と codex_scripts 骨格作成",
+      "status": "pending",
       "waves": [
         {
-          "wave": "wave-1",
+          "id": "W1-1",
+          "title": "基盤ファイル整備",
           "tasks": [
             {
-              "id": "M1-W1-T1",
-              "summary": "Verify health/restart flow on clean repo",
-              "status": "todo",
-              "acceptance_criteria": [
-                "make orch-restart completes",
-                "make orch-health returns status ok"
-              ],
-              "verify_commands": [
-                "make orch-restart",
-                "make orch-health"
-              ],
-              "evidence_paths": []
+              "id": "T1",
+              "title": "AGENTS.md を作成してCODEXに渡す絶対ルールとObserve→Patch→Verify→Reportワークフロー指示を記述する",
+              "status": "done"
             },
             {
-              "id": "M1-W1-T2",
-              "summary": "Generate baseline run/report artifacts",
-              "status": "todo",
-              "acceptance_criteria": [
-                "runs/latest.json exists",
-                "reports/REPORT_LATEST.md exists"
-              ],
-              "verify_commands": [
-                "make orch-post",
-                "make orch-report"
-              ],
-              "evidence_paths": []
-            }
-          ]
-        },
-        {
-          "wave": "wave-2",
-          "tasks": [
-            {
-              "id": "M1-W2-T1",
-              "summary": "Harden scope guard behavior for public repo",
-              "status": "todo",
-              "acceptance_criteria": [
-                "No blocked status caused by bootstrap files",
-                "Allowed paths stay unchanged"
-              ],
-              "verify_commands": [
-                "make orch-post",
-                "make orch-report"
-              ],
-              "evidence_paths": []
+              "id": "T2",
+              "title": "tools/codex_scripts/ ディレクトリを作成して __init__.py と README.md を配置する",
+              "status": "done"
             },
             {
-              "id": "M1-W2-T2",
-              "summary": "Document local operator workflow",
-              "status": "todo",
-              "acceptance_criteria": [
-                "README quickstart is runnable",
-                "No CLI auto-run beyond allowed entrypoint"
-              ],
-              "verify_commands": [
-                "powershell -NoProfile -Command \"Select-String -Path README.md -Pattern 'orch-run-next-local'\""
-              ],
-              "evidence_paths": []
+              "id": "T3",
+              "title": "runtime/prompts/ ディレクトリを作成して .gitignore に runtime/prompts/ を追記する",
+              "status": "done"
+            },
+            {
+              "id": "T4",
+              "title": "verify: AGENTS.md が存在し tools/codex_scripts/ 構造が正しいことを確認する",
+              "status": "pending",
+              "checkpoint": true
             }
           ]
         }
@@ -75,70 +38,113 @@
     },
     {
       "id": "M2",
-      "title": "Role-Separated Task Delivery",
-      "goal": "Use planner/builder/verifier prompts with file-based memory.",
-      "status": "planned",
+      "title": "Phase 2: ループランナーコア実装",
+      "status": "pending",
       "waves": [
         {
-          "wave": "wave-1",
+          "id": "W2-1",
+          "title": "プロンプトビルダーと on_loop_end 実装",
           "tasks": [
             {
-              "id": "M2-W1-T1",
-              "summary": "Define planner role and output contract",
-              "status": "todo",
-              "acceptance_criteria": [
-                "Planner prompt defines one-cause/one-fix selection",
-                "Planner output references milestones.json"
-              ],
-              "verify_commands": [
-                "type prompts/planner.md"
-              ],
-              "evidence_paths": []
+              "id": "T5",
+              "title": "tools/codex_scripts/prompt_builder.py を実装してSSoT要約・前回結果・タスクをnext_prompt.mdに埋め込む",
+              "status": "pending"
             },
             {
-              "id": "M2-W1-T2",
-              "summary": "Define builder role boundaries",
-              "status": "todo",
-              "acceptance_criteria": [
-                "Builder prompt prohibits unrelated edits",
-                "Builder requires verification commands"
-              ],
-              "verify_commands": [
-                "type prompts/builder.md"
-              ],
-              "evidence_paths": []
+              "id": "T6",
+              "title": "tools/codex_scripts/on_loop_end.py を実装してstdoutからreport JSONを抽出しruntime/にレポートを保存する",
+              "status": "pending"
+            },
+            {
+              "id": "T7",
+              "title": "verify: python tools/codex_scripts/prompt_builder.py --dry-run でruntime/prompts/next_prompt.md が生成されることを確認する",
+              "status": "pending",
+              "checkpoint": true
             }
           ]
         },
         {
-          "wave": "wave-2",
+          "id": "W2-2",
+          "title": "メインループランナー実装",
           "tasks": [
             {
-              "id": "M2-W2-T1",
-              "summary": "Define verifier role evidence policy",
-              "status": "todo",
-              "acceptance_criteria": [
-                "Verifier requires command outputs and artifact paths",
-                "Verifier blocks mock-only completion"
-              ],
-              "verify_commands": [
-                "type prompts/verifier.md"
-              ],
-              "evidence_paths": []
+              "id": "T8",
+              "title": "tools/codex_scripts/loop_run.py を実装してcodex CLIをサブプロセスで呼び出す自動ループを作る",
+              "status": "pending"
             },
             {
-              "id": "M2-W2-T2",
-              "summary": "Align docs with SSOT/report loop",
-              "status": "todo",
-              "acceptance_criteria": [
-                "docs/architecture.md and docs/quality.md exist",
-                "Both docs reference report integrity expectations"
-              ],
-              "verify_commands": [
-                "type docs/architecture.md",
-                "type docs/quality.md"
-              ],
-              "evidence_paths": []
+              "id": "T9",
+              "title": "tools/codex_scripts/loop_status.py を実装してruntime/runs/latest.json を読んでループ状態を表示する",
+              "status": "pending"
+            },
+            {
+              "id": "T10",
+              "title": "verify: python tools/codex_scripts/loop_run.py --dry-run でタスク取得とprompt生成が正常動作することを確認する",
+              "status": "pending",
+              "checkpoint": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M3",
+      "title": "Phase 3: スコープガードとMakefile統合",
+      "status": "pending",
+      "waves": [
+        {
+          "id": "W3-1",
+          "title": "スコープガードとセットアップスクリプト",
+          "tasks": [
+            {
+              "id": "T11",
+              "title": "tools/codex_scripts/scope_guard.py を実装してSSoT.mdとpolicy/ssot_integrity.jsonへの書き込みをブロックする",
+              "status": "pending"
+            },
+            {
+              "id": "T12",
+              "title": "tools/codex_scripts/setup.py を実装してruntime/ディレクトリ作成とSSoTハッシュ登録を行う",
+              "status": "pending"
+            },
+            {
+              "id": "T13",
+              "title": "Makefile に codex-loop-run, codex-loop-status, codex-setup ターゲットを追加する",
+              "status": "pending"
+            },
+            {
+              "id": "T14",
+              "title": "verify: make codex-setup が exit 0 で完了して runtime/ 構造が正しく作成されることを確認する",
+              "status": "pending",
+              "checkpoint": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M4",
+      "title": "Phase 4: 結合テストと動作確認",
+      "status": "pending",
+      "waves": [
+        {
+          "id": "W4-1",
+          "title": "結合テストとドキュメント整備",
+          "tasks": [
+            {
+              "id": "T15",
+              "title": "make codex-loop-run N=1 でCODEX CLIを1回呼び出してループが完走することを確認する",
+              "status": "pending"
+            },
+            {
+              "id": "T16",
+              "title": "runtime/reports/REPORT_LATEST.md に decision=success が記録されることを確認する",
+              "status": "pending"
+            },
+            {
+              "id": "T17",
+              "title": "verify: make codex-loop-status で前回実行結果が正しく表示されることをエビデンス付きで確認する",
+              "status": "pending",
+              "checkpoint": true
             }
           ]
         }

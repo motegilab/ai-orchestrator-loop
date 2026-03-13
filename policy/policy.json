@@ -1,103 +1,23 @@
 {
   "version": "1.0.0",
   "scope": {
-    "repo_root": ".",
-    "allowed_read_prefixes": [
-      "rules/",
-      "tools/orchestrator/",
-      "tools/orchestrator_runtime/",
-      "policy/",
-      "ASSISTANT.md",
-      "Makefile",
-      "GNUmakefile"
-    ],
-    "deny_read_prefixes": [
-      "9990_System/",
-      ".git/",
-      "node_modules/"
-    ],
-    "deny_read_globs": [
-      "**/AGENTS*.md",
-      "**/*.secret",
-      "**/*.key"
-    ],
-    "must_read_first": [
-      "rules/SSOT_AI_Orchestrator_Loop.md",
-      "rules/SSOT_FIRST_Orchestrator.md",
-      "tools/orchestrator_runtime/runs/latest.json",
-      "tools/orchestrator_runtime/reports/REPORT_LATEST.md"
-    ]
+    "allowed_read_prefixes": ["SSOT.md", "CLAUDE.md", "policy/", "tasks/", "docs/", ".claude/", "runtime/"],
+    "deny_write_paths": ["SSOT.md", "policy/ssot_integrity.json", ".git/"]
   },
-  "must_read_first": [
-    "rules/SSOT_AI_Orchestrator_Loop.md",
-    "rules/SSOT_FIRST_Orchestrator.md",
-    "tools/orchestrator_runtime/runs/latest.json",
-    "tools/orchestrator_runtime/reports/REPORT_LATEST.md"
-  ],
-  "command_guard": {
+  "loop_defaults": {
     "enabled": true,
-    "allowed_commands": [
-      "make",
-      "type",
-      "python",
-      "powershell",
-      "pwsh"
-    ],
-    "read_targets_must_match_scope": true,
-    "on_violation": "abort",
-    "violation_message": "COMMAND_GUARD: target path violates policy.scope (denylist or outside allowed prefixes)."
+    "max_auto_loops": 10,
+    "report_required": true
+  },
+  "decision_policy": {
+    "ask_no_action_overrides_all": true,
+    "one_cause_one_fix": true,
+    "ssot_check_required": true
   },
   "self_repair_loop": {
     "enabled": true,
     "max_iters": 3,
     "must_report_each_iter": true,
-    "report_fields_required": [
-      "hypothesis_one_cause",
-      "one_fix",
-      "files_changed",
-      "verify_commands",
-      "exit_codes",
-      "stdout_stderr_tail",
-      "evidence_paths",
-      "decision"
-    ]
-  },
-  "report_integrity": {
-    "enabled": true,
-    "require_executed_commands_cover_verify_commands": true,
-    "on_mismatch": "blocked"
-  },
-  "claim_evidence": {
-    "enabled": true,
-    "required_claim_ids": [
-      "policy.path_normalization",
-      "policy.enforcement",
-      "policy.decision_policy",
-      "next_prompt.hard_scope_policy_blocks",
-      "assistant.md.exists",
-      "policy.policy_json.exists"
-    ]
-  },
-  "noise_control": {
-    "stderr_on_scope_violation": "suppress",
-    "record_in_report": true
-  },
-  "ssot_amendment": {
-    "enabled": true,
-    "required_fields": [
-      "amendment_id",
-      "reason",
-      "acceptance",
-      "evidence_paths"
-    ]
-  },
-  "decision_policy": {
-    "enabled": true,
-    "priorities": [
-      "preflight_auto_restart",
-      "report_exec_log_completeness",
-      "scope_guard_false_positive_reduction",
-      "windows_server_console_banner_heartbeat"
-    ]
+    "report_fields_required": ["hypothesis_one_cause", "one_fix", "files_changed", "verify_commands", "exit_codes", "evidence_paths", "decision"]
   }
 }

@@ -1,18 +1,33 @@
-﻿# runtime artifacts (generated, local-only)
-tools/orchestrator_runtime/**
-!tools/orchestrator_runtime/**/.gitkeep
+# ランタイム生成物はgit管理外
+runtime/**
+runtime/prompts/
 
-# local/editor/env
-.venv/
-.cursor/
-.obsidian/
+# Legacyは公開リポジトリに含めない
+legacy/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
 
-# secrets / local configs
+# ローカル設定
+.claude/settings.local.json
 .env
 *.secret
 *.key
-*.pem
-health_ok
-health_failed
+notifications.json
+
+# IDE / エディタ
+*.code-workspace
+.vscode/settings.json
+.idea/
+
+# バックアップファイル
+*.bak
+*.orig
+
+tools/orchestrator_runtime/

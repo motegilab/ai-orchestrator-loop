@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import threading
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -50,7 +51,9 @@ else:
 
 CONFIG = load_config()
 REPORT_FALLBACK_NAME = "REPORT_FAILED.md"
-HEARTBEAT_INTERVAL_SECONDS = 30
+HEARTBEAT_ACTIVE_INTERVAL_SECONDS = 30
+HEARTBEAT_IDLE_INTERVAL_SECONDS = 180
+HEARTBEAT_IDLE_THRESHOLD_SECONDS = 300
 SERVER_LOG_REL_PATH = "tools/orchestrator_runtime/logs/server.log"
 SERVER_READY_REL_PATH = "tools/orchestrator_runtime/state/server.ready.json"
 LOOP_STATE_REL_PATH = "tools/orchestrator_runtime/state/loop_state.json"
@@ -62,7 +65,12 @@ ALLOWED_PATH_PREFIXES = (
     "rules/",
     "policy/",
 )
-ALLOWED_EXACT_FILES = {"makefile", "gnumakefile", "assistant.md"}
+ALLOWED_EXACT_FILES = {
+    "makefile",
+    "gnumakefile",
+    "assistant.md",
+    "docs/component_map.md",
+}
 DEFAULT_SCOPE_ALLOWED_READ_PREFIXES = (
     "rules/",
     "tools/orchestrator/",
@@ -259,12 +267,29 @@ def _server_state_snapshot() -> Tuple[int, str]:
     return request_count, (last_webhook_time or "N/A")
 
 
+def _heartbeat_interval_seconds(last_webhook_time: str) -> int:
+    text = str(last_webhook_time or "").strip()
+    if not text or text.upper() == "N/A":
+        return HEARTBEAT_IDLE_INTERVAL_SECONDS
+    try:
+        last_dt = datetime.strptime(text, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        age_seconds = (utc_now() - last_dt).total_seconds()
+        if age_seconds >= HEARTBEAT_IDLE_THRESHOLD_SECONDS:
+            return HEARTBEAT_IDLE_INTERVAL_SECONDS
+    except Exception:
+        return HEARTBEAT_ACTIVE_INTERVAL_SECONDS
+    return HEARTBEAT_ACTIVE_INTERVAL_SECONDS
+
+
 def _heartbeat_loop(stop_event: threading.Event) -> None:
-    while not stop_event.wait(HEARTBEAT_INTERVAL_SECONDS):
+    wait_seconds = HEARTBEAT_ACTIVE_INTERVAL_SECONDS
+    while not stop_event.wait(wait_seconds):
         request_count, last_webhook_time = _server_state_snapshot()
+        wait_seconds = _heartbeat_interval_seconds(last_webhook_time)
+        mode = "idle" if wait_seconds == HEARTBEAT_IDLE_INTERVAL_SECONDS else "active"
         _emit_server_log_line(
-            f"[{iso_utc(utc_now())}] HEARTBEAT status=ok request_count={request_count} "
-            f"last_webhook_time={last_webhook_time}"
+            f"[{iso_utc(utc_now())}] HEARTBEAT status=ok mode={mode} request_count={request_count} "
+            f"last_webhook_time={last_webhook_time} next_in={wait_seconds}s"
         )
 
 
@@ -1207,13 +1232,34 @@ def _detect_scope_violation(
         lowercase_for_matching = False
 
     guard_enabled = bool(command_guard_policy.get("enabled", True))
-    command_text = ""
-    for key in ("command", "message", "summary"):
-        value = payload.get(key)
-        text = " ".join(str(value).split()).strip() if value is not None else ""
-        if text:
-            command_text = text
-            break
+
+    def _command_text_from_payload(node: Dict[str, Any]) -> str:
+        def _to_text(value: Any) -> str:
+            if value is None:
+                return ""
+            if isinstance(value, (list, tuple)):
+                joined = " ".join(str(item).strip() for item in value if str(item).strip())
+                return " ".join(joined.split()).strip()
+            return " ".join(str(value).split()).strip()
+
+        direct = _to_text(node.get("command"))
+        if direct:
+            return direct
+
+        raw_node = node.get("raw")
+        if isinstance(raw_node, dict):
+            raw_command = _to_text(raw_node.get("command"))
+            if raw_command:
+                return raw_command
+            raw_nested = raw_node.get("raw")
+            if isinstance(raw_nested, dict):
+                nested_command = _to_text(raw_nested.get("command"))
+                if nested_command:
+                    return nested_command
+        return ""
+
+    # command_guard checks must inspect explicit command fields only.
+    command_text = _command_text_from_payload(payload)
 
     command_name_raw = (
         command_text.split(" ", 1)[0].strip().strip("\"'`").strip(".,:;!?")
@@ -1256,11 +1302,16 @@ def _detect_scope_violation(
                 ),
             }
 
-    strings = []
+    strings: List[str] = []
     if guard_enabled and bool(command_guard_policy.get("read_targets_must_match_scope", True)):
         if command_text:
             strings.append(command_text)
-    strings.extend(_collect_payload_strings(payload))
+        # Scan only explicit top-level fields to avoid false positives from embedded prompt text.
+        for key in ("command", "message", "summary", "event_id", "intent"):
+            value = payload.get(key)
+            text = " ".join(str(value).split()).strip() if value is not None else ""
+            if text:
+                strings.append(text)
     strings.append(str(run_data.get("summary", "")))
     strings.append(str(run_data.get("event_id", "")))
 

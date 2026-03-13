@@ -34,9 +34,39 @@ if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
 
-& $runScript -BindHost $BindHost -Port $Port -TimeoutSeconds $TimeoutSeconds
-if ($LASTEXITCODE -ne 0) {
-  exit $LASTEXITCODE
+$runFailed = $false
+$runExitCode = 0
+$runErrorMessage = ""
+try {
+  & $runScript -BindHost $BindHost -Port $Port -TimeoutSeconds $TimeoutSeconds
+  $runExitCode = $LASTEXITCODE
+  if ($runExitCode -ne 0) {
+    $runFailed = $true
+  }
+}
+catch {
+  $runFailed = $true
+  $runExitCode = if ($LASTEXITCODE -ne $null) { [int]$LASTEXITCODE } else { 1 }
+  $runErrorMessage = $_.Exception.Message
+}
+
+if ($runFailed) {
+  # Fallback: if run script reported failure but health is already OK, do not fail restart.
+  try {
+    $probe = Invoke-WebRequest -UseBasicParsing -Uri "http://$BindHost`:$Port/health" -Method Get -TimeoutSec 2
+    if ($probe.StatusCode -eq 200) {
+      Write-Warning "run.ps1 reported failure, but health is already OK. Continuing."
+      Write-Host "Restart OK: http://$BindHost`:$Port/health"
+      exit 0
+    }
+  }
+  catch {
+  }
+
+  if ($runErrorMessage) {
+    Write-Error $runErrorMessage
+  }
+  exit $(if ($runExitCode -ne 0) { $runExitCode } else { 1 })
 }
 
 $healthUrl = "http://$BindHost`:$Port/health"

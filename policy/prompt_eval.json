@@ -1,0 +1,20 @@
+{
+  "_comment": "Prompt quality evaluation thresholds. Used by post_tool_quality.py and future prompt_eval hook.",
+  "version": "1.0",
+  "enabled": true,
+
+  "threshold": 0.85,
+
+  "weights": {
+    "D1_has_done_section": 0.15,
+    "D2_has_next_section": 0.20,
+    "D3_has_fail_section": 0.10,
+    "D4_has_fix_section": 0.20,
+    "D5_has_verify_section": 0.20,
+    "D6_has_context_section": 0.15,
+    "E1_one_cause_stated": 0.10,
+    "E2_evidence_paths_present": 0.10
+  },
+
+  "_comment_weights": "D1-D6 correspond to required sections in next_session.md. E1-E2 are evidence quality checks."
+}

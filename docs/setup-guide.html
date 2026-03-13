@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Orchestrator Loop — セットアップガイド</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #7c8cff;
+      --accent2: #4ade80;
+      --warn: #fbbf24;
+      --danger: #f87171;
+      --text: #e2e8f0;
+      --text-muted: #8892b0;
+      --code-bg: #0d1117;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      padding: 0 16px 80px;
+    }
+
+    /* ── ヘッダー ── */
+    header {
+      background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 48px 0 40px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header .badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 3px 10px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    header h1 {
+      font-size: clamp(24px, 5vw, 44px);
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -1px;
+    }
+    header p {
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-size: 15px;
+    }
+
+    /* ── レイアウト ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 40px;
+      max-width: 1100px;
+      margin: 48px auto 0;
+    }
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { display: none; }
+    }
+
+    /* ── サイドナビ ── */
+    nav {
+      position: sticky;
+      top: 160px;
+      height: fit-content;
+    }
+    nav ul { list-style: none; }
+    nav li a {
+      display: block;
+      padding: 7px 14px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      border-left: 2px solid var(--border);
+      transition: color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    nav li a:hover { color: var(--accent); border-color: var(--accent); }
+    nav .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 20px 14px 6px;
+    }
+
+    /* ── メインコンテンツ ── */
+    main > section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 40px;
+      margin-bottom: 28px;
+    }
+    main > section:first-child { margin-top: 0; }
+
+    /* ── 見出し ── */
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 14px;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+    h2 {
+      display: flex;
+      align-items: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 { font-size: 15px; font-weight: 600; color: var(--text); margin: 20px 0 8px; }
+
+    /* ── コードブロック ── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 16px 20px;
+      font-size: 13px;
+      overflow-x: auto;
+      margin: 12px 0;
+      position: relative;
+    }
+    code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; color: #a8d8ea; }
+    pre code { color: #c9d1d9; }
+    .cmd { color: var(--accent2); }
+    .comment { color: var(--text-muted); font-style: italic; }
+    .hlkey { color: var(--accent); }
+
+    /* ── インラインコード ── */
+    p code, li code, td code {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 12.5px;
+      color: #a8d8ea;
+    }
+
+    /* ── テーブル ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 13.5px;
+    }
+    th {
+      background: var(--surface2);
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+
+    /* ── アラート ── */
+    .alert {
+      border-radius: 7px;
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 13.5px;
+      display: flex;
+      gap: 12px;
+    }
+    .alert-icon { font-size: 18px; flex-shrink: 0; line-height: 1.5; }
+    .alert-warn { background: #2a2000; border: 1px solid #665200; }
+    .alert-info { background: #001a2e; border: 1px solid #004080; }
+    .alert-ok { background: #002010; border: 1px solid #006030; }
+
+    /* ── フロー図 ── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 16px 0;
+    }
+    .flow-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .flow-line {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 28px;
+      flex-shrink: 0;
+    }
+    .flow-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+      margin-top: 6px;
+    }
+    .flow-connector {
+      width: 2px;
+      flex-grow: 1;
+      min-height: 20px;
+      background: var(--border);
+    }
+    .flow-item:last-child .flow-connector { display: none; }
+    .flow-body { padding-bottom: 20px; }
+    .flow-title { font-weight: 600; color: #fff; margin-bottom: 4px; }
+    .flow-desc { font-size: 13px; color: var(--text-muted); }
+
+    /* ── チェックリスト ── */
+    .checklist { list-style: none; }
+    .checklist li {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      font-size: 14px;
+    }
+    .checklist li:last-child { border-bottom: none; }
+    .checklist .check { color: var(--accent2); font-weight: 700; flex-shrink: 0; }
+    .checklist .skip { color: var(--text-muted); flex-shrink: 0; }
+
+    /* ── コマンドハイライト ── */
+    .cmd-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 14px 20px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cmd-block .prompt { color: var(--accent2); font-family: monospace; font-size: 14px; }
+    .cmd-block code { font-size: 14px; color: #fff; }
+    .cmd-block .cmd-desc { color: var(--text-muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
+
+    p { margin-bottom: 10px; font-size: 14.5px; color: #cbd5e1; }
+    ul, ol { padding-left: 20px; margin-bottom: 10px; }
+    li { font-size: 14px; color: #cbd5e1; margin-bottom: 4px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── URL 入力フォーム ── */
+    .url-form {
+      background: var(--surface2);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin: 16px 0;
+    }
+    .url-form label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .url-form input[type="text"] {
+      width: 100%;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: #fff;
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      font-size: 13px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .url-form input[type="text"]:focus { border-color: var(--accent); }
+    .url-form input[type="text"]::placeholder { color: var(--text-muted); }
+    .url-form .hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+    /* ── コピーボタン付きコードブロック ── */
+    .code-wrap {
+      position: relative;
+      margin: 12px 0;
+    }
+    .code-wrap pre {
+      margin: 0;
+      padding-right: 80px;
+    }
+    .copy-code-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .copy-code-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .copy-code-btn.copied { background: var(--accent2); color: #000; border-color: var(--accent2); }
+
+    /* ── コピペブロック ── */
+    .copybox {
+      background: var(--code-bg);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin: 16px 0;
+      position: relative;
+    }
+    .copybox-label {
+      position: absolute;
+      top: -12px;
+      left: 16px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 2px 10px;
+      border-radius: 99px;
+      text-transform: uppercase;
+    }
+    .copybox pre { border: none; background: transparent; padding: 0; margin: 0; }
+    .copy-btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 14px;
+      transition: opacity 0.2s;
+    }
+    .copy-btn:hover { opacity: 0.85; }
+
+    /* ── フッター ── */
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      max-width: 1100px;
+      margin: 60px auto 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Claude-First AI Orchestrator</div>
+  <h1>AI Orchestrator Loop</h1>
+  <p>セットアップガイド — テンプレートから新プロジェクトを立ち上げるまでの完全手順</p>
+</header>
+
+<div class="layout">
+
+  <!-- ── サイドナビ ── -->
+  <nav>
+    <div class="section-label">はじめに</div>
+    <ul>
+      <li><a href="#quickstart" style="color:var(--accent2); font-weight:700;">🚀 初心者向けクイックスタート</a></li>
+      <li><a href="#overview">概要</a></li>
+      <li><a href="#prereq">前提条件</a></li>
+    </ul>
+    <div class="section-label">セットアップ</div>
+    <ul>
+      <li><a href="#step1">Step 1: リポジトリ作成</a></li>
+      <li><a href="#step2">Step 2: 自動セットアップ</a></li>
+      <li><a href="#step3">Step 3: Discord 通知（任意）</a></li>
+      <li><a href="#step4">Step 4: SSOT 書き換え</a></li>
+      <li><a href="#step5">Step 5: タスク定義</a></li>
+      <li><a href="#step6">Step 6: ループ起動</a></li>
+    </ul>
+    <div class="section-label">運用</div>
+    <ul>
+      <li><a href="#commands">コマンド一覧</a></li>
+      <li><a href="#loop-flow">ループの流れ</a></li>
+      <li><a href="#ssot-check">SSOT チェック</a></li>
+      <li><a href="#checkpoint">チェックポイント</a></li>
+      <li><a href="#trouble">トラブル対処</a></li>
+    </ul>
+    <div class="section-label">応用</div>
+    <ul>
+      <li><a href="#existing-project">既存PJへの導入</a></li>
+      <li><a href="#sync-upstream">テンプレート更新の反映</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── メイン ── -->
+  <main>
+
+    <!-- 🚀 初心者向けクイックスタート -->
+    <section id="quickstart" style="border-color: var(--accent); background: linear-gradient(135deg, #1a1d35 0%, #1a1d27 100%);">
+      <h2><span class="step-badge">🚀</span>初めての方へ — これだけでOK</h2>
+      <p>
+        セットアップの詳細を読む前に、<strong>このプロンプトを Claude に貼るだけ</strong>で始められます。
+        AI が対話しながら SSOT 作成・タスク定義・ループ起動まで全部案内してくれます。
+      </p>
+      <div class="copybox">
+        <div class="copybox-label">コピペ用プロンプト</div>
+        <pre><code id="onboarding-prompt">docs/onboarding-prompt.md の内容をコピーしてください。
+ファイルを開いて「▼ここからコピー▼」〜「▲ここまでコピー▲」の部分を
+Claude のチャットに貼り付けるだけで始められます。</code></pre>
+        <a href="onboarding-prompt.md" style="display:inline-block; background:var(--accent); color:#fff; border-radius:6px; padding:8px 20px; font-size:13px; font-weight:600; margin-top:14px; text-decoration:none;">
+          プロンプトファイルを開く →
+        </a>
+      </div>
+      <div class="alert alert-info" style="margin-top:16px;">
+        <div class="alert-icon">💡</div>
+        <div>
+          AI がやってくれること:
+          前提条件チェック → リポジトリ作成 → <code>SSOT.md</code> の生成 →
+          <code>milestones.json</code> の生成 → 最初のループ起動まで
+        </div>
+      </div>
+      <p style="margin-top:12px; color:var(--text-muted); font-size:13px;">
+        詳細な手順が必要な場合や、トラブル対処は以下の各 Step を参照してください。
+      </p>
+    </section>
+
+    <!-- 概要 -->
+    <section id="overview">
+      <h2><span class="step-badge">?</span>このシステムとは</h2>
+      <p>
+        <strong>AI Orchestrator Loop</strong> は、Claude Code CLI をエンジンとした自律実行ループです。
+        タスク定義ファイル（<code>tasks/milestones.json</code>）に "何をすべきか" を書いておくだけで、
+        Claude が Observe → Patch → Verify → Report のサイクルを自動で繰り返し、タスクを消化していきます。
+      </p>
+      <div class="flow">
+        <div class="flow-item">
+          <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+          <div class="flow-body"><div class="flow-title">Observe</div><div class="flow-desc">問題・タスクを調査。Evidence first で現状把握</div></div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+          <div class="flow-body"><div class="flow-title">Patch</div><div class="flow-desc">最小差分で修正。1 原因 1 修正を厳守</div></div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+          <div class="flow-body"><div class="flow-title">Verify</div><div class="flow-desc">exit code と stdout を確認。失敗は次ループへ</div></div>
+        </div>
+        <div class="flow-item">
+          <div class="flow-line"><div class="flow-dot"></div><div class="flow-connector"></div></div>
+          <div class="flow-body"><div class="flow-title">Report</div><div class="flow-desc">結果を REPORT_LATEST.md に記録。Stop Hook が次のコンテキストを生成</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 前提条件 -->
+    <section id="prereq">
+      <h2><span class="step-badge">0</span>前提条件</h2>
+      <table>
+        <tr><th>ツール</th><th>必要バージョン</th><th>確認コマンド</th></tr>
+        <tr><td><code>Python</code></td><td>3.9 以上</td><td><code>python --version</code></td></tr>
+        <tr><td><code>Claude Code CLI</code></td><td>v2.0 以上</td><td><code>claude --version</code></td></tr>
+        <tr><td><code>Git</code></td><td>任意</td><td><code>git --version</code></td></tr>
+        <tr><td><code>make</code></td><td>任意</td><td><code>make --version</code></td></tr>
+      </table>
+      <div class="alert alert-warn">
+        <div class="alert-icon">⚠️</div>
+        <div>Windows では <code>make</code> が標準では入っていません。Git Bash に付属のものか、
+        <code>choco install make</code> でインストールしてください。</div>
+      </div>
+    </section>
+
+    <!-- Step 1 -->
+    <section id="step1">
+      <h2><span class="step-badge">1</span>リポジトリを作成してローカルに持ってくる</h2>
+
+      <!-- GitHub とローカルの関係図 -->
+      <h3>まず知っておくこと — GitHub とローカルフォルダの関係</h3>
+      <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:20px 24px; margin:12px 0;">
+        <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:center; text-align:center;">
+          <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px;">
+            <div style="font-size:28px; margin-bottom:8px;">☁️</div>
+            <div style="font-weight:700; color:#fff; margin-bottom:4px;">GitHub（クラウド）</div>
+            <div style="font-size:12px; color:var(--text-muted);">ファイルがインターネット上に保存されている場所。ブラウザで見れる。</div>
+          </div>
+          <div style="font-size:24px; color:var(--accent);">⇄</div>
+          <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px;">
+            <div style="font-size:28px; margin-bottom:8px;">💻</div>
+            <div style="font-weight:700; color:#fff; margin-bottom:4px;">ローカル（自分のPC）</div>
+            <div style="font-size:12px; color:var(--text-muted);">あなたのパソコン上のフォルダ。実際にコマンドを動かす場所。</div>
+          </div>
+        </div>
+        <div style="margin-top:16px; font-size:13px; color:var(--text-muted); text-align:center;">
+          <code>git clone</code> = GitHub からローカルにコピーする ／
+          <code>git push</code> = ローカルから GitHub にアップする
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <div class="alert-icon">💡</div>
+        <div><strong>ローカルフォルダは自分で作らなくてOKです。</strong>
+        <code>git clone</code> を実行すると、自動でフォルダが作られてファイルがそこにコピーされます。</div>
+      </div>
+
+      <!-- ① GitHub でリポジトリを作る -->
+      <div style="background:linear-gradient(135deg,#1e2a4a,#1a1d27); border:2px solid var(--accent); border-radius:12px; padding:24px 28px; margin:20px 0; text-align:center;">
+        <div style="font-size:13px; font-weight:700; letter-spacing:1.5px; color:var(--accent); text-transform:uppercase; margin-bottom:10px;">START HERE — まずここから</div>
+        <div style="font-size:15px; color:var(--text); margin-bottom:16px;">下のテンプレートリポジトリを開いて <strong style="color:#fff;">Use this template</strong> ボタンを押してください。</div>
+        <a href="https://github.com/motegilab/ai-orchestrator-loop-claude"
+           target="_blank"
+           style="display:inline-flex; align-items:center; gap:10px; background:var(--accent); color:#fff; font-weight:700; font-size:15px; padding:12px 28px; border-radius:8px; text-decoration:none; transition:opacity 0.2s;"
+           onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          テンプレートを開く — github.com/motegilab/ai-orchestrator-loop-claude
+        </a>
+        <div style="margin-top:12px; font-size:12px; color:var(--text-muted);">ページを開いたら緑の <strong>Use this template</strong> → <strong>Create a new repository</strong> を選択してください。</div>
+      </div>
+
+      <h3 style="margin-top:24px;">① GitHub でリポジトリを作る</h3>
+      <ol>
+        <li>上のボタンでテンプレートリポジトリを開く</li>
+        <li>緑色の <strong>Use this template</strong> ボタンをクリック</li>
+        <li><strong>Create a new repository</strong> を選択</li>
+        <li>Repository name に新しいプロジェクト名を入力（例: <code>my-ai-project</code>）</li>
+        <li>Public / Private を選んで <strong>Create repository</strong> をクリック</li>
+        <li>作成されたページで <strong>Code ▼</strong> ボタン → URL をコピー（<code>.git</code> で終わる URL）</li>
+      </ol>
+
+      <!-- ② URL を入力 → コマンド自動生成 -->
+      <h3 style="margin-top:24px;">② あなたのリポジトリ URL を入力する</h3>
+      <p>コピーした URL をここに貼ると、下のコマンドが自動で書き換わります。</p>
+
+      <div class="url-form">
+        <label>① あなたの GitHub リポジトリ URL</label>
+        <input type="text" id="repo-url-input"
+          placeholder="https://github.com/あなたのID/my-ai-project.git"
+          value="">
+        <div class="hint">GitHub の Code ▼ ボタンからコピーした URL を貼る</div>
+
+        <label style="margin-top:18px;">② プロジェクトを作りたいフォルダのパス</label>
+        <input type="text" id="local-path-input"
+          placeholder="C:\Users\あなたの名前\projects"
+          value="">
+        <div class="hint">エクスプローラーのアドレスバーからコピーできます。ここの直下にフォルダが作られます。</div>
+      </div>
+
+      <!-- ③ 自動生成されるコマンド -->
+      <h3 style="margin-top:24px;">③ 生成されたコマンドをそのまま実行する</h3>
+      <p>ターミナル（PowerShell / Git Bash）を開いて、下のコマンドをまるごとコピーして貼り付けてください。</p>
+
+      <div class="code-wrap">
+        <pre><code id="clone-cmd"># ① 上の2つの欄を埋めると、ここが自動で書き換わります</code></pre>
+        <button class="copy-code-btn" onclick="copyCode('clone-cmd', this)">コピー</button>
+      </div>
+
+      <div class="alert alert-ok" style="margin-top:12px;">
+        <div class="alert-icon">✅</div>
+        <div id="clone-result-msg">URL とローカルパスを入力すると、実行すべきコマンドが生成されます。</div>
+      </div>
+
+      <h3 style="margin-top:24px;">ターミナルはどこで開く？（Windows の場合）</h3>
+      <table>
+        <tr><th>方法</th><th>操作</th></tr>
+        <tr><td>エクスプローラーから</td><td>プロジェクトを置きたいフォルダを開いて、アドレスバーに <code>cmd</code> と入力して Enter</td></tr>
+        <tr><td>スタートメニューから</td><td>「Git Bash」または「PowerShell」を検索して起動、その後 <code>cd</code> で移動</td></tr>
+        <tr><td>VSCode から</td><td>VSCode を開いて Ctrl+` でターミナルを開く</td></tr>
+      </table>
+
+    </section>
+
+    <!-- Step 2 -->
+    <section id="step2">
+      <h2><span class="step-badge">2</span>自動セットアップを実行する</h2>
+      <p><code>auto_setup.py</code> を実行すると、前提条件チェック・通知設定・環境確認をまとめて行えます。</p>
+      <div class="cmd-block">
+        <span class="prompt">$</span>
+        <code>python tools/scripts/auto_setup.py</code>
+        <span class="cmd-desc">インタラクティブセットアップ</span>
+      </div>
+      <div class="cmd-block">
+        <span class="prompt">$</span>
+        <code>python tools/scripts/auto_setup.py --check</code>
+        <span class="cmd-desc">確認のみ（変更なし）</span>
+      </div>
+      <p>スクリプトは以下の順番で処理します:</p>
+      <ul>
+        <li>python / claude / make の存在確認</li>
+        <li><code>notifications.json</code> の作成（Discord Webhook URL を設定）</li>
+        <li><code>make setup</code> の実行（SSOT ハッシュ登録）</li>
+        <li>GOチェックリスト 9 項目の確認</li>
+      </ul>
+    </section>
+
+    <!-- Step 3 -->
+    <section id="step3">
+      <h2><span class="step-badge">3</span>Discord 通知を設定する（任意）</h2>
+      <p>ループの開始・完了を Discord に通知できます。通知不要なら Enter でスキップしてかまいません。設定したい場合は下の手順で Webhook URL を取得してください。</p>
+
+      <!-- Webhook URL の取り方 -->
+      <h3 style="margin-top:24px;">① Discord で Webhook URL を取得する</h3>
+      <ol>
+        <li>Discord を開き、通知を受け取りたい <strong>サーバー</strong> を選ぶ（なければ新規作成）</li>
+        <li>通知を送りたい <strong>テキストチャンネル</strong> を右クリック → <strong>チャンネルの編集</strong></li>
+        <li>左メニューの <strong>連携サービス</strong>（Integrations）を開く</li>
+        <li><strong>ウェブフック</strong>（Webhooks）→ <strong>新しいウェブフック</strong> をクリック</li>
+        <li>名前を好きに変えて（例: <code>AI Loop</code>）、<strong>ウェブフック URL をコピー</strong> を押す</li>
+        <li>コピーした URL は <code>https://discord.com/api/webhooks/1234.../xxxx...</code> という形式</li>
+      </ol>
+
+      <div class="alert alert-info" style="margin-top:12px;">
+        <div class="alert-icon">💡</div>
+        <div>チャンネルが見つからない場合：サーバー設定 → 連携サービス → ウェブフック からも作成できます。</div>
+      </div>
+
+      <!-- notifications.json の設定 -->
+      <h3 style="margin-top:24px;">② notifications.json に貼り付ける</h3>
+      <p><code>auto_setup.py</code> で聞かれた URL 入力欄に貼り付けるか、以下のように直接ファイルを編集します。</p>
+      <pre><code><span class="comment">// notifications.json（プロジェクトルートにあります）</span>
+{
+  "discord": {
+    <span class="hlkey">"enabled"</span>: true,
+    <span class="hlkey">"webhook_url"</span>: "https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN",
+    <span class="hlkey">"notify_on"</span>: ["stop"],
+    <span class="hlkey">"mention_role_id"</span>: ""
+  }
+}</code></pre>
+      <p style="margin-top:8px; font-size:13px; color:var(--text-muted);"><code>YOUR_ID/YOUR_TOKEN</code> の部分をコピーした URL 全体で丸ごと置き換えてください。</p>
+
+      <!-- 後から設定する場合 -->
+      <h3 style="margin-top:24px;">③ セットアップ後に設定し直す場合</h3>
+      <p><code>auto_setup.py</code> をスキップした後でも、<code>notifications.json</code> をテキストエディタで直接開いて URL を書き換えれば有効になります。</p>
+      <div class="cmd-block">
+        <span class="prompt">$</span>
+        <code>python tools/scripts/auto_setup.py</code>
+        <span class="cmd-desc">もう一度実行すると再設定できます</span>
+      </div>
+
+      <div class="alert alert-ok" style="margin-top:16px;">
+        <div class="alert-icon">✅</div>
+        <div><code>notifications.json</code> は <code>.gitignore</code> で除外済みです。Webhook URL がリポジトリに公開される心配はありません。</div>
+      </div>
+    </section>
+
+    <!-- Step 4 -->
+    <section id="step4">
+      <h2><span class="step-badge">4</span>SSOT.md と CLAUDE.md をプロジェクト固有に書き換える</h2>
+      <div class="alert alert-warn">
+        <div class="alert-icon">⚠️</div>
+        <div>
+          <strong>SSOT.md はループ実行中は自動編集できません。</strong>
+          必ず手動で編集してから <code>make setup</code> を再実行してください。
+        </div>
+      </div>
+      <p><code>docs/ssot-creation-prompt.md</code> に Claude に渡すプロンプトのひな型があります。</p>
+      <ol>
+        <li><code>docs/ssot-creation-prompt.md</code> を開く</li>
+        <li><code>[...]</code> の部分をプロジェクト情報に書き換える</li>
+        <li>Claude のチャットに貼り付けて SSOT.md の草稿を生成させる</li>
+        <li>草稿を <code>SSOT.md</code> にコピーして保存</li>
+        <li><code>make setup</code> を実行してハッシュを更新する</li>
+      </ol>
+      <div class="cmd-block">
+        <span class="prompt">$</span>
+        <code>make setup</code>
+        <span class="cmd-desc">SSOT 編集後に必ず実行</span>
+      </div>
+      <div class="alert alert-info">
+        <div class="alert-icon">💡</div>
+        <div><code>make setup</code> を実行しないと SSOT ゲートが古いハッシュでブロックします。</div>
+      </div>
+
+      <h3>SSOT に含めるべき内容</h3>
+      <table>
+        <tr><th>セクション</th><th>内容</th><th>必須</th></tr>
+        <tr><td><code>§0</code></td><td>設計原則・プロジェクトの哲学</td><td>✅</td></tr>
+        <tr><td><code>§1</code></td><td>絶対ルール（Hook で強制される制約）</td><td>✅</td></tr>
+        <tr><td><code>§2</code></td><td>環境スタック（Python/Node/DBなど）</td><td>✅</td></tr>
+        <tr><td>アーキテクチャ</td><td>コンポーネント構成・依存方向</td><td>推奨</td></tr>
+        <tr><td>インターフェース契約</td><td>各コンポーネントの I/F 定義</td><td>推奨</td></tr>
+        <tr><td>GOチェックリスト</td><td>フェーズ完了の判定基準</td><td>推奨</td></tr>
+      </table>
+    </section>
+
+    <!-- Step 5 -->
+    <section id="step5">
+      <h2><span class="step-badge">5</span>tasks/milestones.json を定義する</h2>
+      <p>ループが消化するタスクを定義します。</p>
+      <pre><code>{
+  <span class="hlkey">"project"</span>: "my-project",
+  <span class="hlkey">"milestones"</span>: [
+    {
+      <span class="hlkey">"id"</span>: "M1",
+      <span class="hlkey">"title"</span>: "Phase 1: 初期実装",
+      <span class="hlkey">"status"</span>: "pending",
+      <span class="hlkey">"waves"</span>: [
+        {
+          <span class="hlkey">"id"</span>: "W1-1",
+          <span class="hlkey">"title"</span>: "コア実装",
+          <span class="hlkey">"tasks"</span>: [
+            {
+              <span class="hlkey">"id"</span>: "T1",
+              <span class="hlkey">"title"</span>: "20文字以上でタスクを具体的に書く",
+              <span class="hlkey">"status"</span>: "pending"
+            },
+            {
+              <span class="hlkey">"id"</span>: "T2",
+              <span class="hlkey">"title"</span>: "verify: pytest で全テスト PASS を確認する",
+              <span class="hlkey">"status"</span>: "pending",
+              <span class="hlkey">"checkpoint"</span>: true   <span class="comment">// ← ここで loop-run が一時停止</span>
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}</code></pre>
+
+      <h3>タスク設計のルール</h3>
+      <ul class="checklist">
+        <li><span class="check">✓</span> タイトルは <strong>20 文字以上</strong> で具体的に（短すぎると ssot-check が警告）</li>
+        <li><span class="check">✓</span> 各マイルストーンに <strong>pytest / verify を含むタスク</strong> を最低 1 つ入れる</li>
+        <li><span class="check">✓</span> <code>TBD</code> / <code>未定</code> / <code>TODO</code> はエラーになるので使わない</li>
+        <li><span class="check">✓</span> コンポーネント単位でウェーブを分けると Claude の精度が上がる</li>
+        <li><span class="skip">○</span> 中間確認が必要な箇所に <code>"checkpoint": true</code> を付ける（任意）</li>
+      </ul>
+    </section>
+
+    <!-- Step 6 -->
+    <section id="step6">
+      <h2><span class="step-badge">6</span>ループを起動する</h2>
+      <div class="alert alert-warn">
+        <div class="alert-icon">⚠️</div>
+        <div>
+          <strong>VSCode の統合ターミナルからは実行しないでください。</strong>
+          Stop Hook が正常に発火しない場合があります。
+          外部の PowerShell か Git Bash から実行してください。
+        </div>
+      </div>
+
+      <h3>単発実行（1 タスクずつ確認したい場合）</h3>
+      <div class="cmd-block">
+        <span class="prompt">$</span>
+        <code>make loop-start</code>
+        <span class="cmd-desc">1 ループ実行</span>
+      </div>
+
+      <h3>自動連続ループ（推奨）</h3>
+      <div class="cmd-block">
+        <span class="prompt">$</span>
+        <code>make loop-run</code>
+        <span class="cmd-desc">対話プロンプト → 全タスク完了まで自動実行</span>
+      </div>
+      <p>起動すると以下のプロンプトが表示されます:</p>
+      <pre><code>================================================
+  loop-run セットアップ
+================================================
+SSOT チェックをやりますか? [Y/n]: <span class="cmd">y</span>
+ループ回数は最大何回にしますか? (Enter = 無制限): <span class="cmd">10</span></code></pre>
+
+      <h3>回数を直接指定（プロンプトなし）</h3>
+      <div class="cmd-block">
+        <span class="prompt">$</span>
+        <code>make loop-run N=5</code>
+        <span class="cmd-desc">最大 5 ループ</span>
+      </div>
+    </section>
+
+    <!-- コマンド一覧 -->
+    <section id="commands">
+      <h2><span class="step-badge" style="background:var(--text-muted)">≡</span>コマンド一覧</h2>
+      <table>
+        <tr><th>コマンド</th><th>説明</th></tr>
+        <tr><td><code>make loop-start</code></td><td>1 ループ実行（Stop Hook が自動で発火）</td></tr>
+        <tr><td><code>make loop-run</code></td><td>対話プロンプト付き自動連続ループ</td></tr>
+        <tr><td><code>make loop-run N=3</code></td><td>最大 3 ループ実行（プロンプトなし）</td></tr>
+        <tr><td><code>make loop-status</code></td><td>前回ループの状態を表示</td></tr>
+        <tr><td><code>make ssot-check</code></td><td>SSOT 品質チェック（ERROR/WARN/OK）</td></tr>
+        <tr><td><code>make test</code></td><td>インフラ単体テスト（27 ケース）</td></tr>
+        <tr><td><code>make setup</code></td><td>SSOT ハッシュ更新・runtime 初期化</td></tr>
+        <tr><td><code>make help</code></td><td>コマンド一覧表示</td></tr>
+      </table>
+
+      <h3>loop-run のオプション</h3>
+      <table>
+        <tr><th>オプション</th><th>効果</th></tr>
+        <tr><td><code>--dry-run</code></td><td>実行せず次タスクだけ表示</td></tr>
+        <tr><td><code>--skip-check</code></td><td>SSOT チェックをスキップ</td></tr>
+        <tr><td><code>--yes</code></td><td>全プロンプトに自動 yes（CI 用）</td></tr>
+      </table>
+    </section>
+
+    <!-- ループの流れ -->
+    <section id="loop-flow">
+      <h2><span class="step-badge" style="background:var(--text-muted)">↻</span>ループの内部動作</h2>
+      <pre><code>make loop-run
+  ↓
+ssot_check.py  <span class="comment">← SSOT に重大な問題があればブロック</span>
+  ↓
+loop_start.py  <span class="comment">← Claude Code CLI を起動</span>
+  ↓
+  【Claude セッション】
+    SessionStart Hook  <span class="comment">← next_session.md を Claude に注入</span>
+    observe Skill      <span class="comment">← 問題・タスクを調査</span>
+    patch Skill        <span class="comment">← 最小差分で修正</span>
+    verify Skill       <span class="comment">← exit code と stdout を確認</span>
+    report Skill       <span class="comment">← REPORT_LATEST.md に記録</span>
+    Stop Hook          <span class="comment">← on_stop.py が次セッション情報を生成</span>
+  ↓
+loop_run.py が次タスクを確認  <span class="comment">← pending があれば繰り返し</span></code></pre>
+
+      <h3>生成されるファイル</h3>
+      <table>
+        <tr><th>ファイル</th><th>役割</th></tr>
+        <tr><td><code>runtime/reports/REPORT_LATEST.md</code></td><td>直前セッションの結果レポート</td></tr>
+        <tr><td><code>runtime/logs/next_session.md</code></td><td>次セッションへの引き継ぎ指示</td></tr>
+        <tr><td><code>runtime/runs/YYYY-MM-DD_runNNN.json</code></td><td>全ループの実行記録（アーカイブ）</td></tr>
+        <tr><td><code>runtime/runs/latest.json</code></td><td>直前ループの状態（next_task など）</td></tr>
+        <tr><td><code>runtime/artifacts/audit_log.jsonl</code></td><td>Tool 実行の全監査ログ</td></tr>
+      </table>
+    </section>
+
+    <!-- SSOT チェック -->
+    <section id="ssot-check">
+      <h2><span class="step-badge" style="background:var(--text-muted)">✓</span>SSOT チェックの仕組み</h2>
+      <p><code>make loop-run</code> の前に自動実行されます。<code>make ssot-check</code> で単体実行も可能。</p>
+      <table>
+        <tr><th>判定</th><th>条件</th><th>loop-run への影響</th></tr>
+        <tr><td>🔴 ERROR</td><td>§0/§1/§2 欠如、TBD/未定タスクあり、JSON 破損</td><td>ブロック（<code>--skip-check</code> で強制実行可）</td></tr>
+        <tr><td>🟡 WARN</td><td>統合タスクなし、タイトル短すぎ、依存ルール未定義</td><td>続行確認 [y/N]</td></tr>
+        <tr><td>🟢 OK</td><td>問題なし</td><td>即ループ開始</td></tr>
+      </table>
+      <pre><code>=== SSOT Quality Check ===
+    OK    §0 設計原則: 存在
+    OK    §1 絶対ルール: 存在
+    OK    §2 環境: 存在
+   WARN   M2 に統合確認タスク（pytest/verify）がありません
+  ERROR   T5 タイトルに未定義キーワード: 「TBD: あとで実装」
+
+スコア: 45/100
+判定: ERROR — SSOT に重大な問題があります</code></pre>
+    </section>
+
+    <!-- チェックポイント -->
+    <section id="checkpoint">
+      <h2><span class="step-badge" style="background:var(--text-muted)">⏸</span>チェックポイント機能</h2>
+      <p>特定タスクの手前で <code>loop-run</code> を自動停止させる機能です。</p>
+      <pre><code>{
+  "id": "T5",
+  "title": "統合テスト: 全コンポーネントが連携して動くことを確認する",
+  "status": "pending",
+  <span class="hlkey">"checkpoint"</span>: true   <span class="comment">// ← このタスクを実行する前に停止</span>
+}</code></pre>
+      <p>停止時のメッセージ:</p>
+      <pre><code>[loop-run] チェックポイント: T5 — 統合テスト: 全コンポーネントが連携して...
+[loop-run] このタスクの前で停止します。確認後 make loop-run で再開してください。</code></pre>
+      <p>確認後は <code>make loop-run</code> で再開するだけです。チェックポイントを通過したタスクは自動的に続行します。</p>
+    </section>
+
+    <!-- トラブル対処 -->
+    <section id="trouble">
+      <h2><span class="step-badge" style="background:var(--danger)">!</span>トラブル対処</h2>
+
+      <h3>Stop Hook が発火しない / runtime/runs/ にファイルが作られない</h3>
+      <div class="alert alert-warn">
+        <div class="alert-icon">⚠️</div>
+        <div>VSCode 統合ターミナルから <code>make loop-start</code> を実行すると、Claude Code のサブプロセスとして起動され Stop Hook が正常に発火しません。<strong>外部の PowerShell か Git Bash から実行してください。</strong></div>
+      </div>
+
+      <h3>SSOT.md を編集しようとしてブロックされた</h3>
+      <p>正常な動作です。SSOT.md はループ中の自動編集が禁止されています。手動で編集した後 <code>make setup</code> を実行してください。</p>
+
+      <h3>make setup が失敗する</h3>
+      <pre><code><span class="cmd">python</span> tools/scripts/setup.py</code></pre>
+
+      <h3>claude: command not found</h3>
+      <pre><code><span class="cmd">npm install</span> -g @anthropic-ai/claude-code
+<span class="cmd">claude</span> --version</code></pre>
+
+      <h3>連続 incomplete でループが止まった</h3>
+      <p>Claude が <code>report Skill</code> を実行せずにセッションを終了しました。<code>runtime/reports/REPORT_LATEST.md</code> と <code>runtime/artifacts/audit_log.jsonl</code> を確認し、原因を特定してから再実行してください。</p>
+      <pre><code><span class="cmd">make loop-status</span>   <span class="comment"># 前回ループの状態確認</span>
+<span class="cmd">make loop-run</span>      <span class="comment"># 再実行</span></code></pre>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- 応用① 既存PJへの導入                           -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section id="existing-project">
+      <h2><span class="step-badge" style="background:var(--accent2); color:#000;">+</span>既存プロジェクトへの導入</h2>
+      <p>すでにコードがあるプロジェクトに、Claude のオーケストレーター層だけを後から追加できます。<br>
+      <strong>既存のソースコードには一切触れません。</strong>管理レイヤーのファイルだけが追加されます。</p>
+
+      <!-- 何がコピーされるか -->
+      <h3 style="margin-top:24px;">① 何が追加されるのか</h3>
+      <table>
+        <tr><th>追加されるもの</th><th>役割</th><th>既存ファイルと衝突する？</th></tr>
+        <tr><td><code>.claude/</code></td><td>Hook・Skills（Claude の自動動作）</td><td>通常なし</td></tr>
+        <tr><td><code>tools/</code></td><td>ループ実行スクリプト群</td><td>通常なし</td></tr>
+        <tr><td><code>policy/</code></td><td>SSOT 保護ポリシー</td><td>なし</td></tr>
+        <tr><td><code>tasks/</code></td><td>タスク管理ファイル（中身は書き換える）</td><td>なし</td></tr>
+        <tr><td><code>SSOT.md</code></td><td>設計の正本（PJ固有に書き換える）</td><td>なし</td></tr>
+        <tr><td><code>CLAUDE.md</code></td><td>Claude への基本指示</td><td>⚠️ 既存があればマージが必要</td></tr>
+        <tr><td><code>Makefile</code></td><td>ループ起動コマンド</td><td>⚠️ 既存があれば末尾に追記が必要</td></tr>
+        <tr><td><code>.gitignore</code>（runtime行）</td><td>runtime/ を除外</td><td>既存に2行追記するだけ</td></tr>
+      </table>
+      <p style="margin-top:8px; font-size:13px; color:var(--text-muted);">※ <code>src/</code> <code>tests/</code> <code>README.md</code> など既存コードのファイルはコピー対象外です。</p>
+
+      <!-- 一発コマンド生成 -->
+      <h3 style="margin-top:28px;">② 既存PJのパスを入力 → 一発コマンドを生成</h3>
+      <p>下にパスを入力すると、<strong>テンプレート取得 → ファイルコピー → 後片付け → セットアップ</strong> までの全工程が1つのコマンドブロックに生成されます。そのままコピーして PowerShell / Git Bash に貼り付けてください。</p>
+
+      <div class="url-form">
+        <label>既存プロジェクトのフォルダパス</label>
+        <input type="text" id="existing-dest-input"
+          placeholder="C:\Users\あなたの名前\projects\my-existing-project"
+          value="">
+        <div class="hint">エクスプローラーのアドレスバーからコピー &amp; ペーストできます</div>
+      </div>
+
+      <div class="code-wrap" style="margin-top:12px;">
+        <pre><code id="existing-full-cmd"># 既存プロジェクトのフォルダパスを上に入力すると、ここが自動で書き換わります</code></pre>
+        <button class="copy-code-btn" onclick="copyCode('existing-full-cmd', this)">コピー</button>
+      </div>
+
+      <div class="alert alert-ok" id="existing-result-msg" style="margin-top:10px; display:none;">
+        <div class="alert-icon">✅</div>
+        <div id="existing-result-text"></div>
+      </div>
+
+      <!-- 衝突ファイルの対処 -->
+      <h3 style="margin-top:28px;">③ CLAUDE.md / Makefile が既存にある場合</h3>
+      <div class="alert alert-warn">
+        <div class="alert-icon">⚠️</div>
+        <div>コマンドはこれらを上書きします。事前にバックアップしてから、下の表を参考に手動でマージしてください。</div>
+      </div>
+      <table style="margin-top:12px;">
+        <tr><th>ファイル</th><th>マージ方法</th></tr>
+        <tr>
+          <td><code>CLAUDE.md</code></td>
+          <td>テンプレートの「セッション開始時に読むファイル」「ワークフロー」「絶対ルール」「コマンド」「ファイル構成」の5セクションを既存の末尾に追記する</td>
+        </tr>
+        <tr>
+          <td><code>Makefile</code></td>
+          <td><code>loop-start / loop-run / loop-status / loop-stop / setup / test / ssot-check</code> の7ターゲットだけを既存の末尾にコピーする</td>
+        </tr>
+        <tr>
+          <td><code>.gitignore</code></td>
+          <td><code>runtime/**</code> と <code>notifications.json</code> の2行を追記するだけでOK（コマンドには含まれていないため手動）</td>
+        </tr>
+      </table>
+
+      <div class="alert alert-ok" style="margin-top:20px;">
+        <div class="alert-icon">✅</div>
+        <div>コマンド実行後は <strong>Step 4（SSOT 書き換え）→ Step 5（タスク定義）</strong> に進んでください。</div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- 応用② テンプレート更新の反映                   -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section id="sync-upstream">
+      <h2><span class="step-badge" style="background:var(--accent2); color:#000;">↑</span>テンプレートの更新を自分のPJに反映する</h2>
+      <p>テンプレートリポジトリ（<code>motegilab/ai-orchestrator-loop-claude</code>）に改善が加わったとき、自分のPJにも取り込む方法です。</p>
+
+      <div class="alert alert-info">
+        <div class="alert-icon">💡</div>
+        <div>GitHub の「Use this template」で作ったリポジトリはフォークではないため、自動で更新は届きません。手動で取り込む必要があります。</div>
+      </div>
+
+      <!-- PJパス入力 -->
+      <div class="url-form" style="margin-top:20px;">
+        <label>自分のプロジェクトフォルダパス</label>
+        <input type="text" id="sync-proj-input"
+          placeholder="C:\Users\あなたの名前\projects\my-project"
+          value="">
+        <div class="hint">エクスプローラーのアドレスバーからコピー &amp; ペーストできます。入力するとコマンドが自動更新されます。</div>
+      </div>
+
+      <!-- upstream 登録 -->
+      <h3 style="margin-top:24px;">① upstream を一度だけ登録する</h3>
+      <p>プロジェクトフォルダで一度だけ実行します（2回目以降は不要）。</p>
+      <div class="code-wrap">
+        <pre><code id="upstream-add">git remote add upstream https://github.com/motegilab/ai-orchestrator-loop-claude.git
+git remote -v   # 確認</code></pre>
+        <button class="copy-code-btn" onclick="copyCode('upstream-add', this)">コピー</button>
+      </div>
+
+      <!-- パターン選択 -->
+      <h3 style="margin-top:28px;">② 取り込み方を選ぶ</h3>
+
+      <table>
+        <tr><th>パターン</th><th>こんな時に使う</th><th>リスク</th></tr>
+        <tr>
+          <td>A. 特定ファイルだけ取得</td>
+          <td>hooks や scripts の一部だけ更新したい</td>
+          <td>低（他は変わらない）</td>
+        </tr>
+        <tr>
+          <td>B. まるごとマージ</td>
+          <td>大きな改善を全部取り込みたい</td>
+          <td>中（コンフリクトが出る場合あり）</td>
+        </tr>
+      </table>
+
+      <!-- パターンA -->
+      <h3 style="margin-top:24px; color:var(--accent2);">パターン A — 特定ファイルだけ取得（おすすめ）</h3>
+      <p>よく更新される hooks や scripts だけを選んで取り込みます。<code>SSOT.md</code> や <code>milestones.json</code> は上書きされません。</p>
+      <div class="code-wrap">
+        <pre><code id="sync-file">git fetch upstream
+
+# よく更新されるファイルを個別に取得
+git checkout upstream/main -- .claude/hooks/on_stop.py
+git checkout upstream/main -- .claude/hooks/post_tool_quality.py
+git checkout upstream/main -- tools/scripts/loop_run.py
+git checkout upstream/main -- tools/scripts/ssot_check.py
+
+# 取り込んだ内容を確認してコミット
+git diff --stat
+git commit -m "chore: sync hooks and scripts from upstream template"</code></pre>
+        <button class="copy-code-btn" onclick="copyCode('sync-file', this)">コピー</button>
+      </div>
+
+      <!-- パターンB -->
+      <h3 style="margin-top:24px; color:var(--warn);">パターン B — まるごとマージ</h3>
+      <p>テンプレートの全変更をまとめて取り込みます。自分のPJに変更がある場合はコンフリクトが発生することがあります。</p>
+      <div class="code-wrap">
+        <pre><code id="sync-merge">git fetch upstream
+git merge upstream/main --allow-unrelated-histories</code></pre>
+        <button class="copy-code-btn" onclick="copyCode('sync-merge', this)">コピー</button>
+      </div>
+
+      <h3 style="margin-top:20px;">コンフリクトが出たときの対処</h3>
+      <p>マージ後にコンフリクトが出た場合、以下のファイルは<strong>自分側を優先</strong>して解決してください。</p>
+      <table>
+        <tr><th>ファイル</th><th>理由</th></tr>
+        <tr><td><code>SSOT.md</code></td><td>PJ固有の設計を含むため、自分の内容を残す</td></tr>
+        <tr><td><code>CLAUDE.md</code></td><td>PJ固有の指示を含むため、自分の内容を残す</td></tr>
+        <tr><td><code>tasks/milestones.json</code></td><td>進行中のタスクが入っているため、自分の内容を残す</td></tr>
+        <tr><td><code>policy/ssot_integrity.json</code></td><td>SSOT ハッシュが記録されているため、自分の内容を残す</td></tr>
+      </table>
+
+      <div class="code-wrap" style="margin-top:12px;">
+        <pre><code id="conflict-resolve"># コンフリクトを「自分側で解決」するコマンド例
+git checkout --ours SSOT.md
+git checkout --ours CLAUDE.md
+git checkout --ours tasks/milestones.json
+git checkout --ours policy/ssot_integrity.json
+git add SSOT.md CLAUDE.md tasks/milestones.json policy/ssot_integrity.json
+git commit -m "chore: merge upstream, keep project-specific files"</code></pre>
+        <button class="copy-code-btn" onclick="copyCode('conflict-resolve', this)">コピー</button>
+      </div>
+
+      <!-- 更新頻度の目安 -->
+      <h3 style="margin-top:28px;">③ どのくらいの頻度で確認すればいい？</h3>
+      <p>テンプレートリポジトリの <a href="https://github.com/motegilab/ai-orchestrator-loop-claude/releases" target="_blank" style="color:var(--accent);">Releases ページ</a> を見て、<strong>メジャー・マイナーアップデートのときだけ</strong>取り込む運用が現実的です。日常的な同期は不要です。</p>
+
+      <div class="alert alert-ok" style="margin-top:12px;">
+        <div class="alert-icon">✅</div>
+        <div>パッチ fix（バグ修正）だけが目的なら、パターン A で <code>.claude/hooks/</code> と <code>tools/scripts/</code> だけを取り込むのが最も安全です。</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <p>AI Orchestrator Loop — Claude-First Hook-Driven Automation Template</p>
+  <p style="margin-top:8px;">関連ファイル:
+    <a href="INITIAL_SETUP_GUIDE.md">INITIAL_SETUP_GUIDE.md</a> ·
+    <a href="ssot-creation-prompt.md">ssot-creation-prompt.md</a> ·
+    <a href="../SSOT.md">SSOT.md</a> ·
+    <a href="../CLAUDE.md">CLAUDE.md</a>
+  </p>
+</footer>
+
+<script>
+// ── URL + ローカルパス → コマンド自動生成 ────────────────────
+const urlInput   = document.getElementById('repo-url-input');
+const pathInput  = document.getElementById('local-path-input');
+const cloneCmd   = document.getElementById('clone-cmd');
+const resultMsg  = document.getElementById('clone-result-msg');
+
+function getRepoName(url) {
+  const m = url.trim().match(/\/([^\/]+?)(\.git)?$/);
+  return m ? m[1] : 'my-project';
+}
+
+// パス区切り文字を正規化（Windows バックスラッシュ対応）
+function normPath(p) { return p.replace(/\\/g, '\\'); }
+
+function updateCommands() {
+  const url      = urlInput  ? urlInput.value.trim()  : '';
+  const localRaw = pathInput ? pathInput.value.trim() : '';
+
+  // フォルダ名は URL から取得。ローカルパス末尾がリポジトリ名なら分離
+  let parentPath = localRaw;
+  let repoName   = url ? getRepoName(url) : 'my-project';
+
+  // ローカルパスの末尾がリポジトリ名と一致する場合は親だけ使う
+  // 例: G:\projects\open-claw → G:\projects (repoName は URL から取得)
+  const sep = localRaw.includes('/') ? '/' : '\\';
+  const parts = localRaw.split(/[/\\]/);
+  const last = parts[parts.length - 1];
+  if (url && last === repoName) {
+    parentPath = parts.slice(0, -1).join(sep);
+  }
+
+  const displayUrl = url || 'https://github.com/あなたのID/my-ai-project.git';
+  const lines = [];
+
+  if (parentPath) {
+    lines.push(`# ① プロジェクトを置きたいフォルダに移動`);
+    lines.push(`cd "${parentPath}"`);
+    lines.push(``);
+  }
+  lines.push(`# ${parentPath ? '②' : '①'} GitHub からローカルにコピー（フォルダが自動で作られる）`);
+  lines.push(`git clone ${displayUrl}`);
+  lines.push(``);
+  lines.push(`# ${parentPath ? '③' : '②'} 作られたフォルダに入る`);
+  lines.push(`cd ${repoName}`);
+
+  cloneCmd.textContent = lines.join('\n');
+
+  if (url && parentPath) {
+    const fullPath = parentPath.replace(/[/\\]$/, '') + sep + repoName;
+    resultMsg.textContent =
+      `コマンド実行後、「${fullPath}」フォルダが作られてファイルが全部入ります。このフォルダ内で作業してください。`;
+  } else if (url) {
+    resultMsg.textContent =
+      `「${repoName}」フォルダが現在地に作られます。ローカルパスも入力するとより具体的なコマンドが生成されます。`;
+  } else {
+    resultMsg.textContent = 'URL とローカルパスを入力すると、実行すべきコマンドが生成されます。';
+  }
+}
+
+if (urlInput)  { urlInput.addEventListener('input', updateCommands); }
+if (pathInput) { pathInput.addEventListener('input', updateCommands); }
+updateCommands();
+
+
+// ── 既存PJ導入：一発コマンド生成 ────────────────────────────
+const existingDestInput = document.getElementById('existing-dest-input');
+const existingFullCmd   = document.getElementById('existing-full-cmd');
+const existingResultMsg = document.getElementById('existing-result-msg');
+const existingResultTxt = document.getElementById('existing-result-text');
+
+function updateExistingFullCmd() {
+  const dst = existingDestInput ? existingDestInput.value.trim() : '';
+  if (dst) {
+    existingFullCmd.textContent =
+`# ① テンプレートを一時フォルダに取得
+git clone https://github.com/motegilab/ai-orchestrator-loop-claude.git _orch_tmp
+
+# ② 必要なフォルダ・ファイルだけを既存PJへコピー（src/ tests/ README.md は除外）
+robocopy "_orch_tmp" "${dst}" /E /XD .git runtime __pycache__ legacy src tests /XF README.md
+
+# ③ 一時フォルダを削除
+rmdir /s /q _orch_tmp
+
+# ④ 既存PJへ移動してセットアップ実行
+cd "${dst}"
+python tools/scripts/auto_setup.py
+make setup`;
+    if (existingResultMsg) existingResultMsg.style.display = 'flex';
+    if (existingResultTxt) existingResultTxt.textContent =
+      `「${dst}」にオーケストレーター層が追加されます。コマンド実行後は SSOT.md と milestones.json を書き換えてください。`;
+  } else {
+    existingFullCmd.textContent = '# 既存プロジェクトのフォルダパスを上に入力すると、ここが自動で書き換わります';
+    if (existingResultMsg) existingResultMsg.style.display = 'none';
+  }
+}
+
+if (existingDestInput) { existingDestInput.addEventListener('input', updateExistingFullCmd); }
+
+// ── upstream 同期コマンド生成 ────────────────────────────────
+const syncProjInput = document.getElementById('sync-proj-input');
+const upstreamAdd   = document.getElementById('upstream-add');
+const syncFileCmd   = document.getElementById('sync-file');
+const syncMergeCmd  = document.getElementById('sync-merge');
+const conflictCmd   = document.getElementById('conflict-resolve');
+
+function updateSyncCmds() {
+  const p = syncProjInput ? syncProjInput.value.trim() : '';
+  const cdLine = p ? `cd "${p}"\n` : `# cd "プロジェクトのパス"\n`;
+
+  if (upstreamAdd) upstreamAdd.textContent =
+    cdLine +
+    `git remote add upstream https://github.com/motegilab/ai-orchestrator-loop-claude.git\n` +
+    `git remote -v   # 確認`;
+
+  if (syncFileCmd) syncFileCmd.textContent =
+    cdLine +
+    `git fetch upstream\n\n` +
+    `# よく更新されるファイルを個別に取得\n` +
+    `git checkout upstream/main -- .claude/hooks/on_stop.py\n` +
+    `git checkout upstream/main -- .claude/hooks/post_tool_quality.py\n` +
+    `git checkout upstream/main -- tools/scripts/loop_run.py\n` +
+    `git checkout upstream/main -- tools/scripts/ssot_check.py\n\n` +
+    `# 取り込んだ内容を確認してコミット\n` +
+    `git diff --stat\n` +
+    `git commit -m "chore: sync hooks and scripts from upstream template"`;
+
+  if (syncMergeCmd) syncMergeCmd.textContent =
+    cdLine +
+    `git fetch upstream\n` +
+    `git merge upstream/main --allow-unrelated-histories`;
+
+  if (conflictCmd) conflictCmd.textContent =
+    `# コンフリクトを「自分側で解決」するコマンド例\n` +
+    `git checkout --ours SSOT.md\n` +
+    `git checkout --ours CLAUDE.md\n` +
+    `git checkout --ours tasks/milestones.json\n` +
+    `git checkout --ours policy/ssot_integrity.json\n` +
+    `git add SSOT.md CLAUDE.md tasks/milestones.json policy/ssot_integrity.json\n` +
+    `git commit -m "chore: merge upstream, keep project-specific files"`;
+}
+
+if (syncProjInput) { syncProjInput.addEventListener('input', updateSyncCmds); }
+updateSyncCmds();
+
+// ── コピーボタン ──────────────────────────────────────────────
+function copyCode(elemId, btn) {
+  const el = document.getElementById(elemId);
+  const text = el ? el.textContent : '';
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'コピー済み ✓';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'コピー';
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch(() => {
+    // フォールバック
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = 'コピー済み ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'コピー'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── ページ内の全 pre にコピーボタンを自動付与 ────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('pre').forEach((pre) => {
+    // すでに .code-wrap に入っているものはスキップ
+    if (pre.closest('.code-wrap')) return;
+    // id がある code 要素を持つものはスキップ（手動管理）
+    if (pre.querySelector('code[id]')) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'code-wrap';
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(pre);
+
+    const btn = document.createElement('button');
+    btn.className = 'copy-code-btn';
+    btn.textContent = 'コピー';
+    btn.onclick = () => {
+      const text = pre.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'コピー済み ✓';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'コピー'; btn.classList.remove('copied'); }, 2000);
+      });
+    };
+    wrap.appendChild(btn);
+  });
+});
+</script>
+</body>
+</html>

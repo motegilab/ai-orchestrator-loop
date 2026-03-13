@@ -1,0 +1,8 @@
+{
+  "discord": {
+    "enabled": true,
+    "webhook_url": "https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN",
+    "notify_on": ["stop"],
+    "mention_role_id": ""
+  }
+}

@@ -12,3 +12,7 @@ ORCH_TARGETS := orch-start orch-start-bg orch-stop orch-restart orch-health orch
 
 $(ORCH_TARGETS):
 	@$(ORCH_TASK_RUNNER) --task $@ --port $(ORCH_PORT) --codex-timeout $(ORCH_CODEX_TIMEOUT) --loop-n $(ORCH_LOOP_N) --loop-interval $(ORCH_LOOP_INTERVAL) --audit-file "$(AUDIT_FILE)" --signal "$(SIGNAL)"
+
+.PHONY: orch-loop-run
+orch-loop-run:
+	@python tools/orchestrator/scripts/loop_run.py $(ORCH_LOOP_RUN_ARGS)

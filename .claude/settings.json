@@ -1,0 +1,72 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python tools/scripts/ssot_check.py)",
+      "Bash(printf \"n\\\\n3\\\\n\")",
+      "Bash(python tools/scripts/loop_run.py)",
+      "Bash(python -m pytest tests/infra/ -v)",
+      "Bash(python -c \":*)",
+      "Bash(python -m pytest tests/infra/ -q)",
+      "WebFetch(domain:resources.anthropic.com)",
+      "WebFetch(domain:www.anthropic.com)",
+      "WebSearch",
+      "WebFetch(domain:claude.com)",
+      "WebFetch(domain:gist.github.com)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/on_session_start.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/ssot_gate.py --mode=prompt"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/ssot_gate.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/post_tool_quality.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/on_stop.py",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

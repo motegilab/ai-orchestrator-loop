@@ -89,6 +89,89 @@ function Get-PidFromFile {
   return 0
 }
 
+$attemptedStops = New-Object 'System.Collections.Generic.HashSet[int]'
+
+function Test-PidExists {
+  param([int]$ProcId)
+
+  if ($ProcId -le 0) {
+    return $false
+  }
+
+  try {
+    $output = tasklist /FI "PID eq $ProcId" 2>$null
+    if (-not $output) {
+      return $false
+    }
+    foreach ($line in $output) {
+      if ($line -match "^\s*\S+\s+$ProcId\s+") {
+        return $true
+      }
+    }
+    return $false
+  }
+  catch {
+    return $false
+  }
+}
+
+function Try-StopPid {
+  param([int]$ProcId, [string]$Context)
+
+  if ($ProcId -le 0) {
+    return $false
+  }
+
+  try {
+    $proc = Get-Process -Id $ProcId -ErrorAction Stop
+  }
+  catch {
+    return $true
+  }
+
+  try {
+    Stop-Process -Id $ProcId -Force -ErrorAction Stop
+  }
+  catch {
+    # Keep going and verify actual process state below.
+  }
+
+  Start-Sleep -Milliseconds 150
+
+  if (-not (Test-PidExists -ProcId $ProcId)) {
+    Write-Host "Stopped PID=$ProcId ($($proc.ProcessName)) $Context."
+    return $true
+  }
+
+  try {
+    $taskkillOutput = taskkill /PID $ProcId /F /T 2>&1
+    Start-Sleep -Milliseconds 150
+    if (-not (Test-PidExists -ProcId $ProcId)) {
+      Write-Host "Stopped PID=$ProcId ($($proc.ProcessName)) $Context."
+      return $true
+    }
+    Write-Warning "Failed to stop PID=${ProcId} $Context. taskkill output: $($taskkillOutput -join ' ')"
+    return $false
+  }
+  catch {
+    if (-not (Test-PidExists -ProcId $ProcId)) {
+      Write-Host "Stopped PID=$ProcId ($($proc.ProcessName)) $Context."
+      return $true
+    }
+    Write-Warning "Failed to stop PID=${ProcId} $Context."
+    return $false
+  }
+}
+
+function Test-ProcessAlive {
+  param([int]$ProcId)
+
+  if ($ProcId -le 0) {
+    return $false
+  }
+  return Test-PidExists -ProcId $ProcId
+}
+
 $targetPid = Get-PidFromFile -Path $pidPath
 $remaining = Get-ListenerPids -LocalPort $Port
 
@@ -99,13 +182,10 @@ if ($targetPid -le 0 -and (-not $remaining -or $remaining.Count -eq 0)) {
 }
 
 if ($targetPid -gt 0) {
-  try {
-    $proc = Get-Process -Id $targetPid -ErrorAction Stop
-    Stop-Process -Id $targetPid -Force -ErrorAction Stop
-    Write-Host "Stopped PID=$targetPid ($($proc.ProcessName)) from pid file."
-  }
-  catch {
-    Write-Warning "PID from pid file could not be stopped (PID=$targetPid): $($_.Exception.Message)"
+  [void]$attemptedStops.Add([int]$targetPid)
+  $stopped = Try-StopPid -ProcId $targetPid -Context "from pid file"
+  if (-not $stopped) {
+    Write-Warning "PID from pid file could not be stopped (PID=$targetPid)."
   }
 }
 
@@ -114,26 +194,17 @@ while ((Get-Date) -lt $deadline) {
   $remaining = Get-ListenerPids -LocalPort $Port
   if ($remaining -and $remaining.Count -gt 0) {
     foreach ($procId in $remaining) {
-      try {
-        $proc = Get-Process -Id $procId -ErrorAction Stop
-        Stop-Process -Id $procId -Force -ErrorAction Stop
-        Write-Host "Stopped PID=$procId ($($proc.ProcessName)) on port $Port."
+      if ($attemptedStops.Contains([int]$procId)) {
+        continue
       }
-      catch {
-        Write-Warning "Failed to stop PID=${procId}: $($_.Exception.Message)"
-      }
+      [void]$attemptedStops.Add([int]$procId)
+      [void](Try-StopPid -ProcId $procId -Context "on port $Port")
     }
   }
 
   $targetStillRunning = $false
   if ($targetPid -gt 0) {
-    try {
-      Get-Process -Id $targetPid -ErrorAction Stop | Out-Null
-      $targetStillRunning = $true
-    }
-    catch {
-      $targetStillRunning = $false
-    }
+    $targetStillRunning = Test-ProcessAlive -ProcId $targetPid
   }
 
   if ((-not $remaining -or $remaining.Count -eq 0) -and -not $targetStillRunning) {
