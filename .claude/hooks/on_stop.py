@@ -108,6 +108,32 @@ def get_next_task():
     return None
 
 
+def get_just_completed_milestone():
+    """全タスクが done だがマイルストーン自体が未完了（pending/in_progress）のものを返す。
+    マイルストーンの最後のタスクが done になった瞬間に検出される。
+    """
+    if not MILESTONES.exists():
+        return None
+    try:
+        data = json.loads(MILESTONES.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    for ms in data.get("milestones", []):
+        if ms.get("status") in ("pending", "in_progress"):
+            all_tasks = [
+                task
+                for wave in ms.get("waves", [])
+                for task in wave.get("tasks", [])
+            ]
+            if all_tasks and all(t.get("status") == "done" for t in all_tasks):
+                return {
+                    "milestone_id": ms["id"],
+                    "milestone_title": ms["title"],
+                    "task_count": len(all_tasks),
+                }
+    return None
+
+
 def handle_report(run_id, ts, audit_entries):
     """
     REPORT_LATEST.md を検査し、テンプレートのままなら自動生成する。
@@ -160,7 +186,7 @@ make loop-status
     return source
 
 
-def generate_next_session(run_id, ts, report_source, next_task, audit_entries):
+def generate_next_session(run_id, ts, report_source, next_task, audit_entries, completed_milestone=None):
     """
     next_session.md を生成する。これがループの燃料。
     指示は「何を読むか」ではなく「何をするか」を明示する。
@@ -190,8 +216,26 @@ def generate_next_session(run_id, ts, report_source, next_task, audit_entries):
                 report_decision = line.strip()
                 break
 
+    # マイルストーン完了時は milestone-review Skill の実行を最優先指示
+    if completed_milestone:
+        ms_id    = completed_milestone["milestone_id"]
+        ms_title = completed_milestone["milestone_title"]
+        ms_count = completed_milestone["task_count"]
+        next_action = f"""## 🎉 マイルストーン完了 — NEXT ACTION（必ずこれを先に実行）
+
+**[{ms_id}] {ms_title}** の全 {ms_count} タスクが完了しました。
+
+### 実行手順
+1. **milestone-review Skill を実行して** `runtime/reports/MANUAL_CHECK_{ms_id}.html` を生成する
+2. 生成した HTML をブラウザで開いてユーザーに確認を促す
+3. milestones.json の `{ms_id}` の status を `"done"` に更新する
+4. report Skill でこのセッションの結果を記録する
+
+### ⚠️ 重要
+- 次のマイルストーンのタスクは、人間が MANUAL_CHECK_{ms_id}.html を確認してからでないと開始しない
+- milestone-review Skill を先に実行すること"""
     # 次タスクの具体的な実行指示
-    if next_task:
+    elif next_task:
         next_action = f"""## NEXT ACTION（これを実行してください）
 
 次のタスク: **{next_task['task_id']} — {next_task['task_title']}**
@@ -359,8 +403,11 @@ def main():
     # 次タスクを milestones.json から取得
     next_task = get_next_task()
 
+    # マイルストーン完了チェック
+    completed_milestone = get_just_completed_milestone()
+
     # next_session.md 生成（ループの燃料）
-    generate_next_session(run_id, ts, report_source, next_task, audit_entries)
+    generate_next_session(run_id, ts, report_source, next_task, audit_entries, completed_milestone)
 
     # run レコード保存
     status = "success" if report_source == "written_by_claude" else report_source
@@ -381,6 +428,7 @@ def main():
         "report_path": str(LATEST_REPORT),
         "next_session_path": str(NEXT_SESSION),
         "next_task": next_task,
+        "milestone_completed": completed_milestone,
     }
     try:
         run_path = RUNS_DIR / f"{run_id}.json"

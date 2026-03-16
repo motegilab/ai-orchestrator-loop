@@ -58,6 +58,17 @@ def get_last_report_source():
         return None
 
 
+def get_completed_milestone():
+    """on_stop.py が検出したマイルストーン完了情報を返す"""
+    if not LATEST.exists():
+        return None
+    try:
+        d = json.loads(LATEST.read_text(encoding="utf-8"))
+        return d.get("milestone_completed")
+    except Exception:
+        return None
+
+
 def print_status(msg):
     print(f"[loop-run] {msg}", flush=True)
 
@@ -147,12 +158,12 @@ for i in range(1, max_loops + 1):
     if next_task.get("checkpoint"):
         print_status(f"チェックポイント: {next_task['task_id']} — {next_task['task_title'][:50]}")
         if YES_ALL:
-            ans_cp = "y"
+            print_status("--yes フラグのためチェックポイントを通過します。")
         else:
             ans_cp = ask("[loop-run] このタスクを実行しますか? [y/N]: ", default="n")
-        if ans_cp.lower() != "y":
-            print_status("停止しました。確認後 make loop-run で再開してください。")
-            sys.exit(0)
+            if ans_cp.lower() != "y":
+                print_status("停止しました。確認後 make loop-run で再開してください。")
+                sys.exit(0)
 
     task_label = f"{next_task['task_id']} — {next_task['task_title'][:50]}"
     print_status(f"ループ {i}/{loops_label}: {task_label}")
@@ -179,5 +190,33 @@ for i in range(1, max_loops + 1):
             sys.exit(1)
     else:
         consecutive_incomplete = 0
+
+    # マイルストーン完了チェック
+    completed_ms = get_completed_milestone()
+    if completed_ms:
+        ms_id    = completed_ms.get("milestone_id", "?")
+        ms_title = completed_ms.get("milestone_title", "?")
+        ms_count = completed_ms.get("task_count", "?")
+        print_status("")
+        print_status("*" * 60)
+        print_status("*" + " " * 58 + "*")
+        print_status(f"*   🎉  MILESTONE COMPLETE: [{ms_id}]" + " " * max(0, 22 - len(ms_id)) + "*")
+        print_status(f"*   {ms_title[:52]:<52}  *")
+        print_status(f"*   完了タスク数: {ms_count} タスク" + " " * max(0, 43 - len(str(ms_count))) + "*")
+        print_status("*" + " " * 58 + "*")
+        print_status("*" * 60)
+        print_status("")
+        print_status(">>> 次のアクション:")
+        print_status(f"    1. Claude に「マイルストーンレビューを実行して」と伝える")
+        print_status(f"    2. HTMLチェックリストが生成される:")
+        print_status(f"       runtime/reports/MANUAL_CHECK_{ms_id}.html")
+        print_status(f"    3. ブラウザで開いて全項目を確認する")
+        print_status(f"    4. 確認完了後 make loop-run で次フェーズへ")
+        print_status("")
+        if not YES_ALL:
+            ans_ms = ask("[loop-run] レビュー生成のためにループを停止しますか? [Y/n]: ", default="y")
+            if ans_ms.lower() != "n":
+                print_status("停止しました。上の手順に従って進めてください。")
+                sys.exit(0)
 
 print_status("loop_run 終了。")
