@@ -10,9 +10,43 @@ stdout の内容が Claude の additionalContext になる
   4. 前回コンテキスト（latest.json + next_session.md）を stdout に出力
   5. Discord 開始通知
 """
-import json, sys, os, urllib.request
+import json, sys, os, urllib.request, subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def check_upstream_updates(repo_root):
+    """upstream/main に新しいコミットがあれば通知文を返す（失敗時は None）"""
+    try:
+        # ローカルが持っている upstream/main の SHA
+        local = subprocess.run(
+            ["git", "rev-parse", "upstream/main"],
+            capture_output=True, text=True, timeout=3, cwd=repo_root
+        )
+        if local.returncode != 0:
+            return None  # upstream remote 未設定
+
+        # リモートの最新 SHA（ネットワークアクセス）
+        remote = subprocess.run(
+            ["git", "ls-remote", "upstream", "main"],
+            capture_output=True, text=True, timeout=5, cwd=repo_root
+        )
+        if remote.returncode != 0 or not remote.stdout.strip():
+            return None
+
+        local_sha  = local.stdout.strip()
+        remote_sha = remote.stdout.split()[0].strip()
+
+        if local_sha == remote_sha:
+            return None  # 最新
+
+        return (
+            f"🔔 テンプレート更新あり（upstream に新しいコミット）\n"
+            f"   同期するには: git fetch upstream && Pattern A を実行\n"
+            f"   詳細: docs/setup-guide.html の「テンプレートの更新を反映する」を参照\n"
+        )
+    except Exception:
+        return None  # オフライン・タイムアウトは無視
 
 
 def send_discord_start(repo_root, next_task_label):
@@ -155,6 +189,11 @@ make loop-status
         lines.append("--- 引き継ぎここまで ---\n")
     else:
         lines.append("\n初回起動: SSOT.mdとCLAUDE.mdを読んでから tasks/milestones.json のタスクを開始してください。\n")
+
+    # ── upstream 更新チェック ────────────────────────────────────────────
+    update_msg = check_upstream_updates(repo_root)
+    if update_msg:
+        lines.append(f"\n{update_msg}")
 
     print("".join(lines))
 

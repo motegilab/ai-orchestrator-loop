@@ -1,9 +1,9 @@
-# SSOT: AI Orchestrator Loop（CODEX版）
+# SSOT: Claude-First AI Orchestrator Loop
 
-NS_ID: NS_AI_ORCHESTRATOR_LOOP_CODEX_SSOT
-バージョン: 2.0（CODEX-First / Runner-Driven）
-最終更新: 2026-03-13
-前バージョン: SSOT v1.0（Claude-First / Hook-Driven, 2026-03-05）
+NS_ID: NS_AI_ORCHESTRATOR_LOOP_CLAUDE_SSOT
+バージョン: 1.0（Claude-first / Hook-driven）
+最終更新: 2026-03-05
+前バージョン: SSOT v2.0（CODEX版, 2026-02-18）
 
 ---
 
@@ -11,33 +11,35 @@ NS_ID: NS_AI_ORCHESTRATOR_LOOP_CODEX_SSOT
 
 | 原則 | 内容 |
 |------|------|
-| CODEX-First | OpenAI Codex CLI が唯一の実行エンジン。Hookなし |
-| Runner-Driven Loop | Pythonランナーがループを外部制御 |
+| Claude-First | Claude Code CLIが唯一の実行エンジン。Webhookサーバ不要 |
+| Hook-Driven Loop | ループ制御はSessionStart/Stop/PreToolUse/PostToolUse Hookが担う |
+| 汎用性 | 任意のPJワークスペースで動く。テンプレートリポジトリとして機能する |
 | Files-as-Memory | 状態管理はファイル（JSON/MD）で完結 |
-| SSOT-First | 必ずSSoT.mdを読んでから実行。ランナーが強制 |
+| SSOT-First | 必ずSSO.md を読んでから実行。UserPromptSubmit Hookで強制される |
 | 1原因1修正 | 1ループで修正するのは1原因に起因する1修正のみ |
-| Prompt-as-Context | next_prompt.md でコンテキスト注入（hookの代替） |
 | 監査ログが真実 | runtime/runs/latest.json と REPORT_LATEST.md が唯一の真実 |
+| Human Tool哲学 | AIがワークフロー主導。人間は make loop-start を叩くだけ |
 
 ---
 
-## §1 絶対ルール
+## §1 絶対ルール（v1）
 
-以下はランナーのスコープガードで強制される:
+以下はPreToolUse Hookで確定的（100%）にブロックされる:
 
-- SSOT.mdを自動ループ内で編集しない
+- SSOT.mdを自動ループ内で編集しない（SSOT更新は手動のみ）
 - policy/ssot_integrity.jsonを自動ループ内で編集しない
 - runtime/以外にランタイム生成物を置かない
-- 1ループで複数原因を修正しない
-- タイムアウト時を「成功」として記録しない
+- .git/以下への直接書き込みをしない
+- 外部APIへのネットワーク接続をしない（v1スコープ）
+- タイムアウト時を「成功」として記録しない（必ずfailedと記録）
 
-### §1.1 許可される実行入口
+### §1.1 許可される実行入口（v1）
 
 | コマンド | 動作 |
 |----------|------|
-| `make codex-loop-run` | ループ開始（自動連続） |
-| `make codex-loop-status` | 状態確認 |
-| `make codex-setup` | 初期化 |
+| `make loop-start` | Claude Code CLIを起動 |
+| `make loop-status` | runtime状態を表示 |
+| `make loop-stop` | セッションを終了 |
 
 ---
 
@@ -45,121 +47,116 @@ NS_ID: NS_AI_ORCHESTRATOR_LOOP_CODEX_SSOT
 
 | レイヤ | ツール | 要件 |
 |--------|--------|------|
-| AI CLI | OpenAI Codex CLI (`codex`) | v1.0以降（`@openai/codex`） |
-| Runner | Python | 3.9以上。標準ライブラリのみ |
+| AI CLI | Claude Code CLI | v2.0以降 |
+| Hook runtime | Python | 3.9以上。標準ライブラリのみ |
 | 入口 | make | GNU Make 3.81以上 |
 
 ---
 
-## §3 ループ仕様（Runner-Driven）
+## §3 ループ仕様（Hook-Driven）
 
-**1ループ**: ランナー起動 → prompt生成 → codex呼び出し → レポート保存 → 次タスクへ
+**コンポーネント依存関係**: on_session_start.py → Claude作業 → on_stop.py → runtime/ の順で依存する。
 
-### §3.1 ループフロー
+**1ループ**: make loop-start → SessionStart → Claude作業 → Stop → runtime更新
 
-```
-make codex-loop-run
-  ↓ tools/codex_scripts/loop_run.py
-  ↓ tasks/milestones.json から次タスク取得
-  ↓ runtime/runs/latest.json から前回結果読み込み
-  ↓ runtime/prompts/next_prompt.md を生成（prompt_builder.py）
-  ↓ codex --approval-mode full-auto < runtime/prompts/next_prompt.md
-  ↓ stdout から report JSON を抽出（on_loop_end.py）
-  ↓ runtime/ にレポートを保存
-  ↓ 次タスクなし → 終了 / あり → ループ継続
-```
+### §3.1 SessionStart Hook（on_session_start.py）
+1. 環境チェック
+2. runtime/runs/latest.json を読む
+3. runtime/reports/REPORT_LATEST.md を読む
+4. runtime/logs/next_session.md を読む
+5. 要約をstdoutに出力 → Claude のadditionalContextに自動注入
 
-### §3.2 next_prompt.md 構造
+### §3.2 Stop Hook（on_stop.py）
+1. runs/YYYY-MM-DD_runNNN.json を生成
+2. runs/latest.json を更新
+3. reports/REPORT_LATEST.md を生成
+4. logs/next_session.md を生成（次回SessionStartで使用）
+⚠️ stop_hook_active フィールドを確認してexit 0すること（無限ループ防止）
 
-1. [CONTEXT] 前回結果 + 現在タスク
-2. [SSOT RULES] §0-§1 抜粋（ルール強制）
-3. [TASK] タスク詳細
-4. [WORKFLOW] Observe → Patch → Verify → Report
-5. [REPORT FORMAT] stdout末尾に必ず出力するJSONスキーマ
+### §3.3 PreToolUse Hook（ssot_gate.py）
+- matcher: Write|Edit|MultiEdit
+- SSOT.mdへの書き込み: 常にブロック（exit 2）
+- ssot_integrity.jsonのhash不一致: exit 2
 
-### §3.3 レポートJSON（stdout末尾に必須出力）
-
-```json
-{
-  "decision": "success|incomplete|blocked",
-  "hypothesis_one_cause": "...",
-  "one_fix": "...",
-  "files_changed": [],
-  "verify_commands": [],
-  "exit_codes": [0],
-  "evidence_paths": []
-}
-```
-
-### §3.4 ループ停止条件
-
-- 次タスクが null（全タスク完了）
-- 連続2回以上の incomplete
-- decision = blocked
+### §3.4 PostToolUse Hook（post_tool_quality.py）
+- matcher: Write|Edit
+- 全実行を runtime/artifacts/audit_log.jsonl に記録
 
 ---
 
-## §4 ファイル配置ポリシー
+## §3.5 インターフェース契約
+
+| コンポーネント | 入力 | 出力 |
+|---|---|---|
+| on_session_start.py | なし | stdout（ClaudeのadditionalContext） |
+| on_stop.py | なし | runtime/runs/latest.json, REPORT_LATEST.md, next_session.md |
+| ssot_gate.py | ツール呼び出し情報 | exit 0（許可）/ exit 2（ブロック） |
+| loop_run.py | N（ループ回数） | exit 0（正常）/ exit 1（異常） |
+
+---
+
+## §4 Hooks設定（.claude/settings.json）
+
+```json
+{
+  "hooks": {
+    "SessionStart": [{"hooks": [{"type": "command", "command": "python .claude/hooks/on_session_start.py"}]}],
+    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "python .claude/hooks/ssot_gate.py --mode=prompt"}]}],
+    "PreToolUse": [{"matcher": "Write|Edit|MultiEdit", "hooks": [{"type": "command", "command": "python .claude/hooks/ssot_gate.py"}]}],
+    "PostToolUse": [{"matcher": "Write|Edit", "hooks": [{"type": "command", "command": "python .claude/hooks/post_tool_quality.py"}]}],
+    "Stop": [{"hooks": [{"type": "command", "command": "python .claude/hooks/on_stop.py", "timeout": 60}]}]
+  }
+}
+```
+
+---
+
+## §5 Skills仕様（自動invoke対応）
+
+| Skill | トリガ | outputs |
+|-------|--------|---------|
+| observe | 問題調査依頼時 / REPORTにエラーがある時 | issue_candidates.md |
+| patch | 修正・実装依頼時 | diff summary, files_changed |
+| verify | patchの後 / 確認依頼時 | exit_codes, evidence_paths |
+| report | 作業終了時 / Stop直前 | REPORT_LATEST.md, latest.json |
+
+---
+
+## §6 ファイル配置ポリシー
 
 | 用途 | パス | Git |
 |------|------|-----|
 | 設計の正本 | SSOT.md | ✅（自動書き込み禁止） |
-| CODEX指示 | AGENTS.md | ✅ |
-| Runnerスクリプト | tools/codex_scripts/ | ✅ |
+| AIへの指示 | CLAUDE.md | ✅（200行以内） |
+| Hooks | .claude/hooks/ | ✅ |
+| Skills | .claude/skills/ | ✅ |
 | ポリシー | policy/ | ✅ |
-| タスク | tasks/milestones.json | ✅ |
+| タスク記憶 | tasks/milestones.json | ✅ |
 | 実行生成物 | runtime/ | ❌（.gitignore必須） |
-| 生成プロンプト | runtime/prompts/ | ❌ |
 
 ---
 
-## §5 コンポーネント構成と依存関係
+## §7 next_session.md テンプレ（必須セクション）
 
-```
-SSOT.md + AGENTS.md  ← 設計制約（自動ループ中は読み取り専用）
-    ↓ 依存
-policy/*.json        ← 機械可読ポリシー
-    ↓ 依存
-tasks/milestones.json ← タスク定義
-    ↓ 依存
-tools/codex_scripts/ ← ループ制御ロジック
-  ├── loop_run.py      インターフェース: main(n_loops, yes_all) → exit_code
-  ├── prompt_builder.py インターフェース: build(task, latest) → next_prompt.md
-  ├── on_loop_end.py   インターフェース: parse_and_save(stdout) → latest.json
-  ├── scope_guard.py   インターフェース: check(path) → allow/deny
-  ├── loop_status.py   インターフェース: show() → stdout
-  └── setup.py         インターフェース: setup() → exit_code
-    ↓ 出力
-runtime/             ← 実行生成物（git管理外）
-```
-
-## §6 スコープガード（scope_guard.py）
-
-- 許可読み取り: SSOT.md, AGENTS.md, policy/, tasks/, docs/, runtime/, src/
-- 書き込み禁止: SSOT.md, policy/ssot_integrity.json, .git/
-- 生成物配置: runtime/ のみ
+- **DONE**: 今回セッション要約
+- **NEXT**: 次にやること
+- **FAIL**: 失敗時のみ。エラー抜粋
+- **FIX**: 最小差分・1原因1修正
+- **VERIFY**: 再検証コマンド
+- **CONTEXT**: 次回セッションに必要な状態情報
 
 ---
 
-## §6 on_loop_end.py 仕様
-
-1. stdoutからreport JSONを抽出
-2. runs/YYYY-MM-DD_runNNN.json を生成
-3. runs/latest.json を更新
-4. reports/REPORT_LATEST.md を生成
-5. logs/next_session.md を生成（次回ループで使用）
-
----
-
-## §7 GOチェックリスト
+## §8 GOチェックリスト（v1）
 
 ```
-[ ] codex --version で v1.0+ 動作確認
-[ ] make codex-setup が exit 0 で完了する
-[ ] AGENTS.md が存在する
-[ ] tools/codex_scripts/ が存在する
-[ ] tasks/milestones.json が valid JSON
-[ ] make codex-loop-run N=1 で1ループ完走する
-[ ] runtime/reports/REPORT_LATEST.md に decision が記録される
-[ ] runtime/ が git管理外である
+[ ] Claude Code CLI v2.0以上インストール済み
+[ ] make loop-start でセッションが起動する
+[ ] SessionStart Hookが発火しadditionalContextが注入される
+[ ] PreToolUse HookがSSO.mdへの書き込みをブロックする
+[ ] Stop Hook後にruntime/runs/latest.jsonが生成される
+[ ] Stop Hook後にruntime/reports/REPORT_LATEST.mdが生成される
+[ ] Stop Hook後にruntime/logs/next_session.mdが生成される
+[ ] 次回loop-startで前回のコンテキストが自動注入される
+[ ] runtime/** がgit管理外である
 ```

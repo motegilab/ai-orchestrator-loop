@@ -2,6 +2,6 @@
   "enabled": true,
   "note": "make setup または python .claude/hooks/ssot_gate.py --update-hash で初回生成してください",
   "files": {
-    "SSOT.md": "5b0a0ad4936933c536574fe81434b6ba2f5dae46929ad5749f3597da5c059032"
+    "SSOT.md": "868f497a26c60495d1c9a7bcae0395f1e88bc5ec8ab374dd92bf0ff0bf0b8825"
   }
 }
