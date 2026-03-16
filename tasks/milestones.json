@@ -29,7 +29,7 @@
             {
               "id": "T4",
               "title": "verify: AGENTS.md が存在し tools/codex_scripts/ 構造が正しいことを確認する",
-              "status": "pending",
+              "status": "done",
               "checkpoint": true
             }
           ]
@@ -48,17 +48,17 @@
             {
               "id": "T5",
               "title": "tools/codex_scripts/prompt_builder.py を実装してSSoT要約・前回結果・タスクをnext_prompt.mdに埋め込む",
-              "status": "pending"
+              "status": "done"
             },
             {
               "id": "T6",
               "title": "tools/codex_scripts/on_loop_end.py を実装してstdoutからreport JSONを抽出しruntime/にレポートを保存する",
-              "status": "pending"
+              "status": "done"
             },
             {
               "id": "T7",
               "title": "verify: python tools/codex_scripts/prompt_builder.py --dry-run でruntime/prompts/next_prompt.md が生成されることを確認する",
-              "status": "pending",
+              "status": "done",
               "checkpoint": true
             }
           ]
@@ -70,17 +70,17 @@
             {
               "id": "T8",
               "title": "tools/codex_scripts/loop_run.py を実装してcodex CLIをサブプロセスで呼び出す自動ループを作る",
-              "status": "pending"
+              "status": "done"
             },
             {
               "id": "T9",
               "title": "tools/codex_scripts/loop_status.py を実装してruntime/runs/latest.json を読んでループ状態を表示する",
-              "status": "pending"
+              "status": "done"
             },
             {
               "id": "T10",
               "title": "verify: python tools/codex_scripts/loop_run.py --dry-run でタスク取得とprompt生成が正常動作することを確認する",
-              "status": "pending",
+              "status": "done",
               "checkpoint": true
             }
           ]
@@ -99,22 +99,22 @@
             {
               "id": "T11",
               "title": "tools/codex_scripts/scope_guard.py を実装してSSoT.mdとpolicy/ssot_integrity.jsonへの書き込みをブロックする",
-              "status": "pending"
+              "status": "done"
             },
             {
               "id": "T12",
               "title": "tools/codex_scripts/setup.py を実装してruntime/ディレクトリ作成とSSoTハッシュ登録を行う",
-              "status": "pending"
+              "status": "done"
             },
             {
               "id": "T13",
               "title": "Makefile に codex-loop-run, codex-loop-status, codex-setup ターゲットを追加する",
-              "status": "pending"
+              "status": "done"
             },
             {
               "id": "T14",
               "title": "verify: make codex-setup が exit 0 で完了して runtime/ 構造が正しく作成されることを確認する",
-              "status": "pending",
+              "status": "done",
               "checkpoint": true
             }
           ]
@@ -133,16 +133,62 @@
             {
               "id": "T15",
               "title": "make codex-loop-run N=1 でCODEX CLIを1回呼び出してループが完走することを確認する",
-              "status": "pending"
+              "status": "done"
             },
             {
               "id": "T16",
               "title": "runtime/reports/REPORT_LATEST.md に decision=success が記録されることを確認する",
-              "status": "pending"
+              "status": "done"
             },
             {
               "id": "T17",
               "title": "verify: make codex-loop-status で前回実行結果が正しく表示されることをエビデンス付きで確認する",
+              "status": "done",
+              "checkpoint": true
+            }
+          ]
+        }
+      ]
+    }
+    ,{
+      "id": "M5",
+      "title": "Phase 5: CODEX版バグ修正（ISSUE-003/004）",
+      "status": "pending",
+      "waves": [
+        {
+          "id": "W5-1",
+          "title": "ISSUE-003: next_task スキーマをClaude版に統一",
+          "tasks": [
+            {
+              "id": "T18",
+              "title": "tools/codex_scripts/on_loop_end.py の next_task フィールドをClaude版と同じフラット文字列（task_id のみ）に修正する",
+              "status": "done"
+            },
+            {
+              "id": "T19",
+              "title": "verify: python tools/codex_scripts/loop_run.py --dry-run 後に runtime/runs/latest.json の next_task が文字列になっていることを確認する",
+              "status": "done",
+              "checkpoint": true
+            }
+          ]
+        },
+        {
+          "id": "W5-2",
+          "title": "ISSUE-004: milestone_completed 検出をCODEX版に追加",
+          "tasks": [
+            {
+              "id": "T20",
+              "title": "tools/codex_scripts/on_loop_end.py にマイルストーン完了検出を追加して milestone_completed フィールドを latest.json に書き込む",
+              "status": "pending"
+            },
+            {
+              "id": "T21",
+              "title": "tools/codex_scripts/loop_run.py がマイルストーン完了を検出してユーザーに milestone-review 実行を促すメッセージを出力するように修正する",
+              "status": "pending"
+            },
+            {
+              "id": "T22",
+              "title": "verify: T18〜T21 の変更後に python tools/codex_scripts/loop_run.py --dry-run で milestone_completed フィールドが正しく生成されることを確認する",
               "status": "pending",
               "checkpoint": true
             }
