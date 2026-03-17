@@ -60,6 +60,17 @@ def check_claude_md_lines(file_path):
         return {"check": "claude_md_lines", "ok": True, "msg": "読み取り不可"}
 
 
+def emit_feedback(messages: list):
+    """問題があれば additionalContext として JSON で返す（Claudeのコンテキストに直接注入される）"""
+    if not messages:
+        return
+    context = "[post_tool_quality] 品質フィードバック:\n" + "\n".join(f"  • {m}" for m in messages)
+    print(json.dumps({"hookSpecificOutput": {"additionalContext": context}}))
+    # 人間向けにも stderr へ出力
+    for m in messages:
+        print(f"[post_tool_quality] ⚠️ {m}", file=sys.stderr)
+
+
 def main():
     try:
         raw = sys.stdin.read()
@@ -71,6 +82,7 @@ def main():
     file_path = tool_input.get("file_path", tool_input.get("path", ""))
     result = {"ok": True, "checks": []}
     policy = load_policy()
+    feedback = []  # Claudeへ返すフィードバックメッセージ
 
     if file_path:
         p = Path(file_path)
@@ -82,8 +94,9 @@ def main():
                 result["checks"].append({"check": "python_syntax", "ok": True})
             except py_compile.PyCompileError as e:
                 result["ok"] = False
+                msg = f"構文エラー: {file_path}: {e}"
                 result["checks"].append({"check": "python_syntax", "ok": False, "msg": str(e)})
-                print(f"[post_tool_quality] ⚠️ 構文エラー: {file_path}: {e}", file=sys.stderr)
+                feedback.append(msg)
 
         # REPORT_LATEST.md 必須フィールドチェック
         if p.name == "REPORT_LATEST.md" and p.exists():
@@ -91,6 +104,7 @@ def main():
             result["checks"].append(chk)
             if not chk["ok"]:
                 result["ok"] = False
+                feedback.append(f"REPORT必須フィールドが不足: {chk.get('missing', [])}")
 
         # CLAUDE.md 200行制限チェック
         if p.name == "CLAUDE.md" and p.exists():
@@ -98,8 +112,10 @@ def main():
             result["checks"].append(chk)
             if not chk["ok"]:
                 result["ok"] = False
+                feedback.append(f"CLAUDE.md が {chk.get('lines')} 行。200行制限を超過しています。削減してください。")
 
     append_audit(event, result)
+    emit_feedback(feedback)
     sys.exit(0)
 
 

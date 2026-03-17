@@ -1170,10 +1170,10 @@ git remote -v   # 確認</code></pre>
       <div class="code-wrap">
         <pre><code id="sync-file">git fetch upstream
 
-# ── 自動実行ファイル（バグ修正・機能追加）
-git checkout upstream/main -- .claude/hooks/on_stop.py
-git checkout upstream/main -- .claude/hooks/post_tool_quality.py
-git checkout upstream/main -- .claude/hooks/ssot_gate.py
+# ── Hooks（全部まとめて。新Hook追加にも自動対応）
+git checkout upstream/main -- .claude/hooks/
+
+# ── スクリプト（バグ修正・機能追加）
 git checkout upstream/main -- tools/scripts/loop_run.py
 git checkout upstream/main -- tools/scripts/ssot_check.py
 
@@ -1454,10 +1454,9 @@ function updateSyncCmds() {
   if (syncFileCmd) syncFileCmd.textContent =
     cdLine +
     `git fetch upstream\n\n` +
-    `# ── 自動実行ファイル（バグ修正・機能追加）\n` +
-    `git checkout upstream/main -- .claude/hooks/on_stop.py\n` +
-    `git checkout upstream/main -- .claude/hooks/post_tool_quality.py\n` +
-    `git checkout upstream/main -- .claude/hooks/ssot_gate.py\n` +
+    `# ── Hooks（全部まとめて。新Hook追加にも自動対応）\n` +
+    `git checkout upstream/main -- .claude/hooks/\n\n` +
+    `# ── スクリプト（バグ修正・機能追加）\n` +
     `git checkout upstream/main -- tools/scripts/loop_run.py\n` +
     `git checkout upstream/main -- tools/scripts/ssot_check.py\n\n` +
     `# ── マニュアル（手順・トラブル対処の最新版）\n` +
